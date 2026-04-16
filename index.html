@@ -1,10 +1,553 @@
 <!DOCTYPE html>
-<html>
-  <head>
-    <title>Relevance Agent Tracker</title>
-  </head>
-  <body>
-    <h1>Relevance Agent Tracker</h1>
-    <p>Your app is deployed. Next step: we wire the UI.</p>
-  </body>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Relevance Agent Tracker</title>
+  <style>
+    :root{
+      --bg1:#020617;
+      --bg2:#0f172a;
+      --bg3:#1e293b;
+      --card:#0f172acc;
+      --card2:#1e293bcc;
+      --text:#e2e8f0;
+      --muted:#94a3b8;
+      --green:#22c55e;
+      --green2:#86efac;
+      --amber:#f59e0b;
+      --orange:#fb923c;
+      --sky:#38bdf8;
+      --border:#334155;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      color:var(--text);
+      background:linear-gradient(135deg,var(--bg1),var(--bg2),var(--bg3));
+      min-height:100vh;
+    }
+    .wrap{
+      max-width:1100px;
+      margin:0 auto;
+      padding:24px;
+    }
+    .card{
+      background:var(--card);
+      border:1px solid var(--border);
+      border-radius:24px;
+      padding:20px;
+      box-shadow:0 10px 30px rgba(0,0,0,.25);
+      position:relative;
+      overflow:hidden;
+    }
+    .top{
+      display:flex;
+      justify-content:space-between;
+      gap:16px;
+      align-items:flex-start;
+      flex-wrap:wrap;
+    }
+    .eyebrow{
+      font-size:12px;
+      letter-spacing:.25em;
+      text-transform:uppercase;
+      color:#cbd5e1;
+      margin-bottom:8px;
+    }
+    h1{
+      margin:0;
+      font-size:40px;
+      line-height:1.1;
+    }
+    .sub{
+      margin-top:10px;
+      color:#cbd5e1;
+      max-width:700px;
+    }
+    .actions{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+    }
+    button, input, textarea{
+      font:inherit;
+    }
+    .btn{
+      border:1px solid var(--border);
+      background:#1e293b;
+      color:var(--text);
+      border-radius:16px;
+      padding:10px 14px;
+      cursor:pointer;
+      transition:.15s ease;
+    }
+    .btn:hover{filter:brightness(1.1)}
+    .btn.primary{
+      background:var(--green);
+      color:#052e16;
+      border-color:#16a34a;
+      font-weight:700;
+    }
+    .btn.warn{
+      background:#111827;
+    }
+    .grid{
+      display:grid;
+      gap:16px;
+      margin-top:18px;
+    }
+    .grid.stats{
+      grid-template-columns:repeat(3,minmax(0,1fr));
+    }
+    .stat{
+      background:var(--card2);
+      border:1px solid var(--border);
+      border-radius:22px;
+      padding:18px;
+    }
+    .stat .label{
+      color:var(--muted);
+      font-size:14px;
+      margin-bottom:6px;
+    }
+    .stat .value{
+      font-size:34px;
+      font-weight:800;
+    }
+    .progressCard{
+      background:var(--card2);
+      border:1px solid var(--border);
+      border-radius:22px;
+      padding:18px;
+      margin-top:16px;
+    }
+    .progressTop{
+      display:flex;
+      justify-content:space-between;
+      gap:12px;
+      align-items:center;
+      flex-wrap:wrap;
+    }
+    .badge{
+      background:#334155;
+      color:#f8fafc;
+      border-radius:999px;
+      padding:8px 12px;
+      font-size:13px;
+    }
+    .bar{
+      margin-top:12px;
+      width:100%;
+      height:16px;
+      background:#0f172a;
+      border-radius:999px;
+      overflow:hidden;
+      border:1px solid #1e293b;
+    }
+    .fill{
+      height:100%;
+      width:0%;
+      background:linear-gradient(90deg,var(--amber),var(--green));
+      transition:width .25s ease;
+    }
+    .main{
+      display:grid;
+      gap:16px;
+      grid-template-columns:1.15fr .85fr;
+      margin-top:16px;
+    }
+    .panel{
+      background:var(--card2);
+      border:1px solid var(--border);
+      border-radius:22px;
+      padding:18px;
+    }
+    label{
+      display:block;
+      margin-bottom:8px;
+      color:#cbd5e1;
+      font-size:14px;
+      font-weight:600;
+    }
+    input, textarea{
+      width:100%;
+      background:#0f172a;
+      color:var(--text);
+      border:1px solid var(--border);
+      border-radius:16px;
+      padding:12px;
+      outline:none;
+    }
+    textarea{
+      min-height:180px;
+      resize:vertical;
+    }
+    .affirm{
+      margin:14px 0;
+      border:1px solid rgba(52,211,153,.25);
+      background:rgba(34,197,94,.1);
+      color:#bbf7d0;
+      border-radius:18px;
+      padding:12px;
+      font-size:14px;
+    }
+    .btnRow{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      margin-top:8px;
+    }
+    .message{
+      margin-top:12px;
+      background:#0f172a;
+      border:1px solid var(--border);
+      border-radius:18px;
+      padding:12px;
+      color:#e2e8f0;
+      min-height:48px;
+    }
+    .logs h2{
+      margin:0 0 12px 0;
+      font-size:22px;
+    }
+    .empty{
+      border:1px dashed var(--border);
+      border-radius:18px;
+      padding:14px;
+      color:var(--muted);
+      font-size:14px;
+    }
+    .log{
+      background:#0f172a;
+      border:1px solid var(--border);
+      border-radius:18px;
+      padding:14px;
+      margin-top:10px;
+    }
+    .logDate{
+      font-size:12px;
+      color:var(--muted);
+      margin-bottom:8px;
+    }
+    .confetti{
+      position:absolute;
+      inset:0;
+      pointer-events:none;
+      overflow:hidden;
+    }
+    .piece{
+      position:absolute;
+      top:-10px;
+      width:8px;
+      height:14px;
+      border-radius:2px;
+      animation:fall 1.3s ease-out forwards;
+    }
+    @keyframes fall{
+      from{opacity:0; transform:translateY(0) rotate(0deg)}
+      10%{opacity:1}
+      to{opacity:0; transform:translateY(320px) rotate(360deg)}
+    }
+    @media (max-width: 900px){
+      .grid.stats,.main{grid-template-columns:1fr}
+      h1{font-size:30px}
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <div id="confetti" class="confetti"></div>
+
+      <div class="top">
+        <div>
+          <div class="eyebrow">The Relevance Agent</div>
+          <h1>📦⬇️ Operation Deploy App</h1>
+          <div class="sub">Complete one mission. Log it. Earn the token. Repeat the loop.</div>
+        </div>
+        <div class="actions">
+          <button id="soundToggle" class="btn">🔊 Sound On</button>
+          <button id="resetBtn" class="btn warn">↺ Reset</button>
+        </div>
+      </div>
+
+      <div class="grid stats">
+        <div class="stat">
+          <div class="label">Total Tokens</div>
+          <div id="tokens" class="value">0</div>
+        </div>
+        <div class="stat">
+          <div class="label">Current Streak</div>
+          <div id="streak" class="value">0</div>
+        </div>
+        <div class="stat">
+          <div class="label">Today</div>
+          <div id="today" class="value" style="font-size:22px"></div>
+        </div>
+      </div>
+
+      <div class="progressCard">
+        <div class="progressTop">
+          <div>
+            <div style="font-size:20px;font-weight:700;">Milestone Progress</div>
+            <div id="milestoneText" style="font-size:14px;color:var(--muted);margin-top:4px;"></div>
+          </div>
+          <div class="badge">Every <span id="milestoneBadge">5</span> tokens</div>
+        </div>
+        <div class="bar"><div id="fill" class="fill"></div></div>
+      </div>
+
+      <div class="main">
+        <div class="panel">
+          <label for="mission">Today's mission</label>
+          <input id="mission" value="Operation Deploy App 🚀" />
+
+          <div style="height:14px"></div>
+
+          <label for="logText">Quick log entry</label>
+          <textarea id="logText" placeholder="Mission: ...&#10;Win: ...&#10;Next: ..."></textarea>
+
+          <div class="affirm">“I complete my mission. I am a Relevance Agent.”</div>
+
+          <div class="btnRow">
+            <button id="earnBtn" class="btn primary">＋ Earn Token</button>
+            <button id="removeBtn" class="btn">－ Remove Token</button>
+          </div>
+
+          <div id="message" class="message">Welcome, Relevance Agent.</div>
+        </div>
+
+        <div class="panel logs">
+          <h2>Recent Logs</h2>
+          <div id="logs"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const STORAGE_KEY = "relevance-agent-token-tracker-v2";
+    const defaultState = {
+      tokens: 0,
+      streak: 0,
+      lastTokenDate: null,
+      milestone: 5,
+      todayMission: "Operation Deploy App 🚀",
+      notes: [],
+      soundOn: true
+    };
+
+    function loadState() {
+      try {
+        return { ...defaultState, ...(JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}) };
+      } catch {
+        return { ...defaultState };
+      }
+    }
+
+    let state = loadState();
+
+    function saveState() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    }
+
+    function todayKey() {
+      return new Date().toISOString().slice(0, 10);
+    }
+
+    function daysBetween(a, b) {
+      const d1 = new Date(a + "T00:00:00");
+      const d2 = new Date(b + "T00:00:00");
+      return Math.round((d2 - d1) / 86400000);
+    }
+
+    function playReward(type = "token") {
+      if (!state.soundOn) return;
+      const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+      if (!AudioContextClass) return;
+      const ctx = new AudioContextClass();
+      const now = ctx.currentTime;
+      const master = ctx.createGain();
+      master.gain.value = 0.18;
+      master.connect(ctx.destination);
+
+      const notes = type === "milestone"
+        ? [523.25, 659.25, 783.99, 1046.5]
+        : [523.25, 659.25];
+
+      notes.forEach((freq, i) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = i % 2 === 0 ? "sine" : "triangle";
+        osc.frequency.setValueAtTime(freq, now + i * 0.08);
+        gain.gain.setValueAtTime(0.0001, now + i * 0.08);
+        gain.gain.exponentialRampToValueAtTime(0.14, now + i * 0.08 + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + i * 0.08 + 0.25);
+        osc.connect(gain);
+        gain.connect(master);
+        osc.start(now + i * 0.08);
+        osc.stop(now + i * 0.08 + 0.3);
+      });
+
+      const popOsc = ctx.createOscillator();
+      const popGain = ctx.createGain();
+      popOsc.type = "square";
+      popOsc.frequency.setValueAtTime(200, now);
+      popOsc.frequency.exponentialRampToValueAtTime(40, now + 0.08);
+      popGain.gain.setValueAtTime(0.2, now);
+      popGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.08);
+      popOsc.connect(popGain);
+      popGain.connect(master);
+      popOsc.start(now);
+      popOsc.stop(now + 0.09);
+
+      const ching1 = ctx.createOscillator();
+      const chingGain1 = ctx.createGain();
+      ching1.type = "triangle";
+      ching1.frequency.setValueAtTime(1200, now + 0.12);
+      chingGain1.gain.setValueAtTime(0.0001, now + 0.12);
+      chingGain1.gain.exponentialRampToValueAtTime(0.12, now + 0.14);
+      chingGain1.gain.exponentialRampToValueAtTime(0.0001, now + 0.3);
+      ching1.connect(chingGain1);
+      chingGain1.connect(master);
+      ching1.start(now + 0.12);
+      ching1.stop(now + 0.32);
+
+      const ching2 = ctx.createOscillator();
+      const chingGain2 = ctx.createGain();
+      ching2.type = "triangle";
+      ching2.frequency.setValueAtTime(1600, now + 0.18);
+      chingGain2.gain.setValueAtTime(0.0001, now + 0.18);
+      chingGain2.gain.exponentialRampToValueAtTime(0.1, now + 0.2);
+      chingGain2.gain.exponentialRampToValueAtTime(0.0001, now + 0.35);
+      ching2.connect(chingGain2);
+      chingGain2.connect(master);
+      ching2.start(now + 0.18);
+      ching2.stop(now + 0.36);
+    }
+
+    function confettiBurst() {
+      const colors = ["#f59e0b", "#22c55e", "#38bdf8", "#fb923c", "#fde68a"];
+      const box = document.getElementById("confetti");
+      box.innerHTML = "";
+      for (let i = 0; i < 28; i++) {
+        const piece = document.createElement("div");
+        piece.className = "piece";
+        piece.style.left = (10 + Math.random() * 80) + "%";
+        piece.style.background = colors[Math.floor(Math.random() * colors.length)];
+        piece.style.animationDelay = (Math.random() * 0.1) + "s";
+        piece.style.transform = `translateX(${(-120 + Math.random() * 240)}px)`;
+        box.appendChild(piece);
+      }
+      setTimeout(() => box.innerHTML = "", 1600);
+    }
+
+    function renderLogs() {
+      const logs = document.getElementById("logs");
+      if (!state.notes.length) {
+        logs.innerHTML = '<div class="empty">No logs yet. Complete a mission, add a note, and earn your first token.</div>';
+        return;
+      }
+      logs.innerHTML = state.notes.map(note => `
+        <div class="log">
+          <div class="logDate">${note.date}</div>
+          <div style="white-space:pre-wrap;">${escapeHtml(note.text)}</div>
+        </div>
+      `).join("");
+    }
+
+    function escapeHtml(str) {
+      return str
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;");
+    }
+
+    function render() {
+      document.getElementById("tokens").textContent = state.tokens;
+      document.getElementById("streak").textContent = state.streak;
+      document.getElementById("today").textContent = todayKey();
+      document.getElementById("mission").value = state.todayMission;
+      document.getElementById("milestoneBadge").textContent = state.milestone;
+
+      const mod = state.tokens % state.milestone;
+      const progress = (mod / state.milestone) * 100;
+      const toNext = state.milestone - (mod || state.milestone);
+
+      document.getElementById("fill").style.width = progress + "%";
+      document.getElementById("milestoneText").textContent =
+        `${toNext} token${toNext === 1 ? "" : "s"} until your next reward at ${state.milestone}.`;
+
+      document.getElementById("soundToggle").textContent = state.soundOn ? "🔊 Sound On" : "🔇 Sound Off";
+      renderLogs();
+      saveState();
+    }
+
+    document.getElementById("mission").addEventListener("input", (e) => {
+      state.todayMission = e.target.value;
+      saveState();
+    });
+
+    document.getElementById("soundToggle").addEventListener("click", () => {
+      state.soundOn = !state.soundOn;
+      render();
+    });
+
+    document.getElementById("resetBtn").addEventListener("click", () => {
+      state = {
+        ...defaultState,
+        milestone: state.milestone,
+        soundOn: state.soundOn,
+        todayMission: state.todayMission || "Operation Deploy App 🚀"
+      };
+      document.getElementById("logText").value = "";
+      document.getElementById("message").textContent = "Tracker reset.";
+      render();
+    });
+
+    document.getElementById("removeBtn").addEventListener("click", () => {
+      if (state.tokens <= 0) return;
+      state.tokens -= 1;
+      document.getElementById("message").textContent = "Removed 1 token.";
+      render();
+    });
+
+    document.getElementById("earnBtn").addEventListener("click", () => {
+      const today = todayKey();
+      let newStreak = 1;
+
+      if (state.lastTokenDate) {
+        const gap = daysBetween(state.lastTokenDate, today);
+        if (gap === 0) newStreak = state.streak;
+        else if (gap === 1) newStreak = state.streak + 1;
+      }
+
+      const text = document.getElementById("logText").value.trim();
+      state.tokens += 1;
+      state.streak = newStreak;
+      state.lastTokenDate = today;
+
+      if (text) {
+        state.notes.unshift({
+          date: new Date().toLocaleString(),
+          text
+        });
+        state.notes = state.notes.slice(0, 20);
+        document.getElementById("logText").value = "";
+      }
+
+      const hitMilestone = state.tokens % state.milestone === 0;
+      document.getElementById("message").textContent =
+        hitMilestone ? `Milestone reached: ${state.tokens} tokens.` : "+1 token earned.";
+
+      confettiBurst();
+      playReward(hitMilestone ? "milestone" : "token");
+      render();
+    });
+
+    render();
+  </script>
+</body>
 </html>

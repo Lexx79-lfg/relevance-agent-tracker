@@ -5,13 +5,22 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { Sparkles, Coins, Flame, CalendarDays, Volume2, VolumeX, RotateCcw, Plus, Minus, Package, ArrowDown } from "lucide-react";
+import { Slider } from "@/components/ui/slider";
+import { Sparkles, Coins, Flame, CalendarDays, Volume2, VolumeX, RotateCcw, Plus, Minus, Package, ArrowDown, Quote } from "lucide-react";
 
-const STORAGE_KEY = "relevance-agent-token-tracker-v1";
+const STORAGE_KEY = "relevance-agent-token-tracker-v2";
+const MILESTONE_EVERY = 4;
+
+const QUOTES = [
+  "Do what you can, with what you have, where you are. — Theodore Roosevelt",
+  "The best way to predict the future is to create it. — Peter Drucker",
+  "Action is the foundational key to all success. — Pablo Picasso",
+  "I didn’t need a better answer to ‘If.’ I needed a way to move forward.",
+  "A mission completed is stronger than a perfect plan delayed.",
+];
 
 function todayKey() {
-  const d = new Date();
-  return d.toISOString().slice(0, 10);
+  return new Date().toISOString().slice(0, 10);
 }
 
 function daysBetween(dateA, dateB) {
@@ -28,22 +37,24 @@ function safeLoad() {
         tokens: 0,
         streak: 0,
         lastTokenDate: null,
-        milestone: 5,
+        milestone: MILESTONE_EVERY,
         todayMission: "Operation Deploy App 🚀",
         notes: [],
         soundOn: true,
+        volume: 82,
       };
     }
-    return JSON.parse(raw);
+    return { milestone: MILESTONE_EVERY, volume: 82, ...JSON.parse(raw) };
   } catch {
     return {
       tokens: 0,
       streak: 0,
       lastTokenDate: null,
-      milestone: 5,
+      milestone: MILESTONE_EVERY,
       todayMission: "Operation Deploy App 🚀",
       notes: [],
       soundOn: true,
+      volume: 82,
     };
   }
 }
@@ -52,8 +63,16 @@ function save(data) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
 }
 
-function useRewardSound(enabled) {
+function useRewardSound(enabled, volumePercent) {
   const audioCtxRef = useRef(null);
+  const audioFileRef = useRef(null);
+
+  useEffect(() => {
+    const audio = new Audio("/Cha-Ching.mp3");
+    audio.volume = Math.min(1, Math.max(0, volumePercent / 100));
+    audio.preload = "auto";
+    audioFileRef.current = audio;
+  }, [volumePercent]);
 
   const ensureCtx = () => {
     if (!audioCtxRef.current) {
@@ -63,92 +82,101 @@ function useRewardSound(enabled) {
     return audioCtxRef.current;
   };
 
+  const tone = (ctx, destination, { type = "sine", frequency = 440, start = 0, duration = 0.2, gain = 0.08, endFrequency = null }) => {
+    const now = ctx.currentTime;
+    const osc = ctx.createOscillator();
+    const amp = ctx.createGain();
+    osc.type = type;
+    osc.frequency.setValueAtTime(frequency, now + start);
+    if (endFrequency) {
+      osc.frequency.exponentialRampToValueAtTime(endFrequency, now + start + duration);
+    }
+    amp.gain.setValueAtTime(0.0001, now + start);
+    amp.gain.exponentialRampToValueAtTime(gain, now + start + 0.01);
+    amp.gain.exponentialRampToValueAtTime(0.0001, now + start + duration);
+    osc.connect(amp);
+    amp.connect(destination);
+    osc.start(now + start);
+    osc.stop(now + start + duration + 0.02);
+  };
+
   const play = (type = "token") => {
     if (!enabled) return;
+
+    const isMilestone = type === "milestone";
+    const volume = Math.min(1, Math.max(0, volumePercent / 100));
+
     const ctx = ensureCtx();
+    if (ctx && ctx.state === "suspended") {
+      ctx.resume(); // 🔥 ensures sound works after user click
+    }
+
+    // Play cha-ching on EVERY token (stronger on milestone)
+    if (audioFileRef.current) {
+      try {
+        audioFileRef.current.currentTime = 0;
+        audioFileRef.current.volume = isMilestone ? Math.min(1, volume) : Math.min(1, volume * 0.7);
+        audioFileRef.current.play().catch(() => {});
+      } catch {}
+    }
+
     if (!ctx) return;
 
     const now = ctx.currentTime;
     const master = ctx.createGain();
     master.gain.setValueAtTime(0.0001, now);
-    master.gain.exponentialRampToValueAtTime(0.18, now + 0.015);
-    master.gain.exponentialRampToValueAtTime(0.0001, now + (type === "milestone" ? 1.2 : 0.55));
+    master.gain.exponentialRampToValueAtTime((isMilestone ? 0.55 : 0.35) * volume, now + 0.02);
+    master.gain.exponentialRampToValueAtTime(0.0001, now + (isMilestone ? 2.5 : 1.0));
     master.connect(ctx.destination);
 
-    // Main reward tones (musical "yay")
-    const notes =
-      type === "milestone"
-        ? [523.25, 659.25, 783.99, 1046.5]
-        : [523.25, 659.25];
+    if (isMilestone) {
+      // BIG reward
+      tone(ctx, master, { type: "square", frequency: 460, endFrequency: 80, start: 0, duration: 0.08, gain: 0.45 });
+      tone(ctx, master, { type: "sawtooth", frequency: 1100, endFrequency: 220, start: 0.008, duration: 0.05, gain: 0.25 });
+      tone(ctx, master, { type: "triangle", frequency: 860, start: 0.06, duration: 0.14, gain: 0.2 });
+      tone(ctx, master, { type: "sine", frequency: 1320, start: 0.11, duration: 0.16, gain: 0.18 });
 
-    notes.forEach((freq, i) => {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = i % 2 === 0 ? "sine" : "triangle";
-      osc.frequency.setValueAtTime(freq, now + i * 0.08);
-      gain.gain.setValueAtTime(0.0001, now + i * 0.08);
-      gain.gain.exponentialRampToValueAtTime(0.14, now + i * 0.08 + 0.02);
-      gain.gain.exponentialRampToValueAtTime(0.0001, now + i * 0.08 + 0.25);
-      osc.connect(gain);
-      gain.connect(master);
-      osc.start(now + i * 0.08);
-      osc.stop(now + i * 0.08 + 0.3);
-    });
-
-    // "Pop" transient (like Halo headshot pop)
-    const popOsc = ctx.createOscillator();
-    const popGain = ctx.createGain();
-    popOsc.type = "square";
-    popOsc.frequency.setValueAtTime(200, now);
-    popOsc.frequency.exponentialRampToValueAtTime(40, now + 0.08);
-    popGain.gain.setValueAtTime(0.2, now);
-    popGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.08);
-    popOsc.connect(popGain);
-    popGain.connect(master);
-    popOsc.start(now);
-    popOsc.stop(now + 0.09);
-
-    // "Cha-ching" high sparkle
-    const ching1 = ctx.createOscillator();
-    const chingGain1 = ctx.createGain();
-    ching1.type = "triangle";
-    ching1.frequency.setValueAtTime(1200, now + 0.12);
-    chingGain1.gain.setValueAtTime(0.0001, now + 0.12);
-    chingGain1.gain.exponentialRampToValueAtTime(0.12, now + 0.14);
-    chingGain1.gain.exponentialRampToValueAtTime(0.0001, now + 0.3);
-    ching1.connect(chingGain1);
-    chingGain1.connect(master);
-    ching1.start(now + 0.12);
-    ching1.stop(now + 0.32);
-
-    const ching2 = ctx.createOscillator();
-    const chingGain2 = ctx.createGain();
-    ching2.type = "triangle";
-    ching2.frequency.setValueAtTime(1600, now + 0.18);
-    chingGain2.gain.setValueAtTime(0.0001, now + 0.18);
-    chingGain2.gain.exponentialRampToValueAtTime(0.1, now + 0.2);
-    chingGain2.gain.exponentialRampToValueAtTime(0.0001, now + 0.35);
-    ching2.connect(chingGain2);
-    chingGain2.connect(master);
-    ching2.start(now + 0.18);
-    ching2.stop(now + 0.36);
+      // YAAAAAY tail
+      tone(ctx, master, { type: "triangle", frequency: 620, endFrequency: 900, start: 0.3, duration: 0.8, gain: 0.14 });
+      tone(ctx, master, { type: "sine", frequency: 900, endFrequency: 1400, start: 0.5, duration: 1.0, gain: 0.12 });
+    } else {
+      // SMALL reward (make sure it's audible!)
+      tone(ctx, master, { type: "square", frequency: 340, endFrequency: 120, start: 0, duration: 0.06, gain: 0.25 });
+      tone(ctx, master, { type: "triangle", frequency: 1100, start: 0.06, duration: 0.15, gain: 0.12 });
+    }
   };
 
   return play;
 }
 
-function ConfettiBurst({ burstKey }) {
+function CelebrationBurst({ burstKey, isMilestone }) {
   const pieces = useMemo(
     () =>
-      Array.from({ length: 28 }, (_, i) => ({
+      Array.from({ length: isMilestone ? 90 : 28 }, (_, i) => ({
         id: `${burstKey}-${i}`,
-        left: 10 + Math.random() * 80,
-        delay: Math.random() * 0.15,
-        duration: 0.9 + Math.random() * 0.8,
-        rotate: -180 + Math.random() * 360,
-        x: -120 + Math.random() * 240,
+        left: 4 + Math.random() * 92,
+        delay: Math.random() * (isMilestone ? 0.3 : 0.14),
+        duration: (isMilestone ? 3.6 : 1.35) + Math.random() * (isMilestone ? 1.8 : 0.9),
+        rotate: -320 + Math.random() * 640,
+        x: -240 + Math.random() * 480,
+        size: isMilestone ? 6 + Math.random() * 10 : 4 + Math.random() * 6,
+        shape: Math.random() > 0.7 ? "circle" : Math.random() > 0.45 ? "diamond" : "rect",
+        color: ["bg-amber-300", "bg-yellow-200", "bg-sky-300", "bg-emerald-300", "bg-fuchsia-300", "bg-rose-300"][Math.floor(Math.random() * 6)],
       })),
-    [burstKey]
+    [burstKey, isMilestone]
+  );
+
+  const sparkles = useMemo(
+    () =>
+      Array.from({ length: isMilestone ? 40 : 8 }, (_, i) => ({
+        id: `spark-${burstKey}-${i}`,
+        left: 6 + Math.random() * 88,
+        delay: Math.random() * (isMilestone ? 0.7 : 0.2),
+        duration: (isMilestone ? 2.4 : 0.8) + Math.random() * (isMilestone ? 1.2 : 0.4),
+        x: -140 + Math.random() * 280,
+        size: isMilestone ? 4 + Math.random() * 6 : 2 + Math.random() * 3,
+      })),
+    [burstKey, isMilestone]
   );
 
   return (
@@ -157,12 +185,34 @@ function ConfettiBurst({ burstKey }) {
         {pieces.map((p) => (
           <motion.div
             key={p.id}
-            initial={{ opacity: 0, y: -10, x: 0, rotate: 0 }}
-            animate={{ opacity: [0, 1, 1, 0], y: 250, x: p.x, rotate: p.rotate }}
+            initial={{ opacity: 0, y: -14, x: 0, rotate: 0, scale: 0.5 }}
+            animate={{
+              opacity: [0, 1, 1, 0.9, 0],
+              y: isMilestone ? "110vh" : 320,
+              x: p.x,
+              rotate: p.rotate,
+              scale: [0.4, 1, 0.9, 0.75],
+            }}
             exit={{ opacity: 0 }}
             transition={{ duration: p.duration, delay: p.delay, ease: "easeOut" }}
-            className="absolute top-0 h-3 w-2 rounded-sm bg-amber-400 shadow"
-            style={{ left: `${p.left}%` }}
+            className={`absolute top-0 shadow-[0_0_16px_rgba(255,255,255,0.45)] ${p.color} ${p.shape === "circle" ? "rounded-full" : p.shape === "diamond" ? "rotate-45 rounded-sm" : "rounded-sm"}`}
+            style={{ left: `${p.left}%`, width: `${p.size}px`, height: `${p.size * 1.6}px` }}
+          />
+        ))}
+        {sparkles.map((s) => (
+          <motion.div
+            key={s.id}
+            initial={{ opacity: 0, y: 0, scale: 0.2 }}
+            animate={{
+              opacity: [0, 1, 0.8, 0],
+              y: isMilestone ? "95vh" : 160,
+              x: s.x,
+              scale: [0.2, 1.35, 0.8, 0.2],
+            }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: s.duration, delay: s.delay, ease: "easeOut" }}
+            className="absolute top-2 rounded-full bg-white shadow-[0_0_22px_rgba(255,255,255,1)]"
+            style={{ left: `${s.left}%`, width: `${s.size}px`, height: `${s.size}px` }}
           />
         ))}
       </AnimatePresence>
@@ -175,15 +225,16 @@ export default function RelevanceAgentTokenTracker() {
   const [burstKey, setBurstKey] = useState(0);
   const [message, setMessage] = useState("Welcome, Relevance Agent.");
   const [logText, setLogText] = useState("");
+  const [lastBurstWasMilestone, setLastBurstWasMilestone] = useState(false);
 
   useEffect(() => {
     save(state);
   }, [state]);
 
-  const playSound = useRewardSound(state.soundOn);
-
+  const playSound = useRewardSound(state.soundOn, state.volume);
   const toNextMilestone = state.milestone - (state.tokens % state.milestone || state.milestone);
   const progressValue = ((state.tokens % state.milestone) / state.milestone) * 100;
+  const quote = QUOTES[state.tokens % QUOTES.length];
 
   const addToken = () => {
     const today = todayKey();
@@ -191,13 +242,9 @@ export default function RelevanceAgentTokenTracker() {
 
     if (state.lastTokenDate) {
       const gap = daysBetween(state.lastTokenDate, today);
-      if (gap === 0) {
-        newStreak = state.streak;
-      } else if (gap === 1) {
-        newStreak = state.streak + 1;
-      } else {
-        newStreak = 1;
-      }
+      if (gap === 0) newStreak = state.streak;
+      else if (gap === 1) newStreak = state.streak + 1;
+      else newStreak = 1;
     }
 
     const newTokens = state.tokens + 1;
@@ -215,9 +262,10 @@ export default function RelevanceAgentTokenTracker() {
     }));
 
     setLogText("");
+    setLastBurstWasMilestone(hitMilestone);
     setBurstKey((k) => k + 1);
     playSound(hitMilestone ? "milestone" : "token");
-    setMessage(hitMilestone ? `Milestone reached: ${newTokens} tokens.` : `+1 token earned.`);
+    setMessage(hitMilestone ? `Milestone reached: ${newTokens} tokens. Yaaaaay.` : `+1 token earned.`);
   };
 
   const removeToken = () => {
@@ -227,16 +275,16 @@ export default function RelevanceAgentTokenTracker() {
   };
 
   const resetAll = () => {
-    const fresh = {
+    setState({
       tokens: 0,
       streak: 0,
       lastTokenDate: null,
-      milestone: state.milestone,
+      milestone: MILESTONE_EVERY,
       todayMission: "Operation Deploy App 🚀",
       notes: [],
       soundOn: state.soundOn,
-    };
-    setState(fresh);
+      volume: state.volume,
+    });
     setLogText("");
     setMessage("Tracker reset.");
   };
@@ -246,7 +294,7 @@ export default function RelevanceAgentTokenTracker() {
       <div className="mx-auto max-w-5xl space-y-6">
         <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
           <Card className="relative overflow-hidden rounded-3xl border-slate-700 bg-slate-900/80 backdrop-blur">
-            <ConfettiBurst burstKey={burstKey} />
+            <CelebrationBurst burstKey={burstKey} isMilestone={lastBurstWasMilestone} />
             <CardHeader className="pb-2">
               <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                 <div>
@@ -260,7 +308,7 @@ export default function RelevanceAgentTokenTracker() {
                     <CardTitle className="text-3xl md:text-4xl">Operation Deploy App</CardTitle>
                   </div>
                   <p className="mt-2 max-w-2xl text-slate-300">
-                    Complete one mission. Log it. Earn the token. Repeat the loop.
+                    Complete one mission. Log it. Earn the token. Every 4th token gets the full celebration.
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
@@ -327,7 +375,7 @@ export default function RelevanceAgentTokenTracker() {
                     <div>
                       <div className="text-lg font-semibold">Milestone Progress</div>
                       <div className="text-sm text-slate-400">
-                        {toNextMilestone} token{toNextMilestone === 1 ? "" : "s"} until your next reward at {state.milestone}.
+                        {toNextMilestone} token{toNextMilestone === 1 ? "" : "s"} until your next celebration at {state.milestone}.
                       </div>
                     </div>
                     <Badge className="rounded-xl bg-slate-700 text-slate-100 hover:bg-slate-700">
@@ -359,6 +407,23 @@ export default function RelevanceAgentTokenTracker() {
                         className="min-h-[180px] w-full rounded-2xl border border-slate-600 bg-slate-900 p-3 text-sm text-slate-100 outline-none placeholder:text-slate-500"
                       />
                     </div>
+
+                    <div>
+                      <div className="mb-2 flex items-center gap-2 text-sm font-medium text-slate-300">
+                        <Volume2 className="h-4 w-4" /> Reward volume
+                      </div>
+                      <div className="rounded-2xl border border-slate-700 bg-slate-900/60 p-4">
+                        <Slider
+                          value={[state.volume]}
+                          min={0}
+                          max={100}
+                          step={1}
+                          onValueChange={(value) => setState((prev) => ({ ...prev, volume: value[0] ?? 80 }))}
+                        />
+                        <div className="mt-2 text-sm text-slate-400">{state.volume}%</div>
+                      </div>
+                    </div>
+
                     <div className="mb-3 rounded-2xl border border-emerald-400/30 bg-emerald-500/10 p-3 text-sm text-emerald-200">
                       “I complete my mission. I am a Relevance Agent.”
                     </div>
@@ -381,30 +446,43 @@ export default function RelevanceAgentTokenTracker() {
                   </CardContent>
                 </Card>
 
-                <Card className="rounded-3xl border-slate-700 bg-slate-800/70">
-                  <CardHeader>
-                    <CardTitle className="text-xl">Recent Logs</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    {state.notes.length === 0 ? (
-                      <div className="rounded-2xl border border-dashed border-slate-600 p-4 text-sm text-slate-400">
-                        No logs yet. Complete a mission, add a note, and earn your first token.
+                <div className="space-y-6">
+                  <Card className="rounded-3xl border-slate-700 bg-slate-800/70">
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2 text-xl"><Quote className="h-5 w-5 text-amber-300" /> Encouragement</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="rounded-2xl border border-slate-700 bg-slate-900/70 p-4 text-sm leading-6 text-slate-200">
+                        {quote}
                       </div>
-                    ) : (
-                      state.notes.map((note, idx) => (
-                        <motion.div
-                          key={`${note.date}-${idx}`}
-                          initial={{ opacity: 0, y: 8 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          className="rounded-2xl border border-slate-700 bg-slate-900/70 p-4"
-                        >
-                          <div className="mb-2 text-xs text-slate-400">{note.date}</div>
-                          <div className="whitespace-pre-wrap text-sm text-slate-200">{note.text}</div>
-                        </motion.div>
-                      ))
-                    )}
-                  </CardContent>
-                </Card>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="rounded-3xl border-slate-700 bg-slate-800/70">
+                    <CardHeader>
+                      <CardTitle className="text-xl">Recent Logs</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      {state.notes.length === 0 ? (
+                        <div className="rounded-2xl border border-dashed border-slate-600 p-4 text-sm text-slate-400">
+                          No logs yet. Complete a mission, add a note, and earn your first token.
+                        </div>
+                      ) : (
+                        state.notes.map((note, idx) => (
+                          <motion.div
+                            key={`${note.date}-${idx}`}
+                            initial={{ opacity: 0, y: 8 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className="rounded-2xl border border-slate-700 bg-slate-900/70 p-4"
+                          >
+                            <div className="mb-2 text-xs text-slate-400">{note.date}</div>
+                            <div className="whitespace-pre-wrap text-sm text-slate-200">{note.text}</div>
+                          </motion.div>
+                        ))
+                      )}
+                    </CardContent>
+                  </Card>
+                </div>
               </div>
             </CardContent>
           </Card>

@@ -1,0 +1,9 @@
+{
+  "name": "relevance-agent-tracker",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {
+    "build": "echo 'no build needed'",
+    "start": "echo 'no start needed'"
+  }
+}

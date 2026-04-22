@@ -5,7 +5,7 @@ type RewardSoundVolumes = {
   milestone: number;
 };
 
-type RewardSoundType = "token" | "milestone";
+type RewardSoundType = "token" | "milestone" | "majorMilestone";
 
 type GeneratedToneStep = {
   kind: "tone";
@@ -48,6 +48,7 @@ type AudioFileRewardClip = {
   masterGain: number;
   steps: AudioFileStep[];
   fallback?: GeneratedRewardClip;
+  maxPlaybackMs?: number;
 };
 
 type RewardClip = GeneratedRewardClip | AudioFileRewardClip;
@@ -55,6 +56,7 @@ type RewardClip = GeneratedRewardClip | AudioFileRewardClip;
 export type RewardProfile = {
   token: RewardClip;
   milestone: RewardClip;
+  majorMilestone: RewardClip;
 };
 
 export type RewardProfileName = keyof typeof REWARD_PROFILES;
@@ -176,6 +178,16 @@ const defaultMilestoneClip: AudioFileRewardClip = {
   masterGain: 1,
   steps: [{ kind: "audio-file", src: "/sounds/milestone.mp3", start: 0 }],
   fallback: defaultMilestoneGeneratedClip,
+  maxPlaybackMs: 12000,
+};
+
+const defaultMajorMilestoneClip: AudioFileRewardClip = {
+  mode: "audio-file",
+  duration: 2,
+  masterGain: 1,
+  steps: [{ kind: "audio-file", src: "/sounds/major-milestone.mp3", start: 0 }],
+  fallback: defaultMilestoneGeneratedClip,
+  maxPlaybackMs: 60000,
 };
 
 const calmTokenClip: GeneratedRewardClip = {
@@ -355,14 +367,17 @@ export const REWARD_PROFILES = {
   default: {
     token: defaultTokenClip,
     milestone: defaultMilestoneClip,
+    majorMilestone: defaultMajorMilestoneClip,
   },
   calm: {
     token: calmTokenClip,
     milestone: calmMilestoneClip,
+    majorMilestone: calmMilestoneClip,
   },
   hype: {
     token: hypeTokenClip,
     milestone: hypeMilestoneClip,
+    majorMilestone: hypeMilestoneClip,
   },
 } satisfies Record<string, RewardProfile>;
 
@@ -371,6 +386,7 @@ export function useRewardSound(enabled: boolean, volumes: RewardSoundVolumes, pr
   const activeMasterRef = useRef<GainNode | null>(null);
   const activeUntilRef = useRef(0);
   const activeAudioRef = useRef<HTMLAudioElement | null>(null);
+  const activeAudioTimeoutRef = useRef<number | null>(null);
 
   const ensureCtx = () => {
     if (!audioCtxRef.current) {
@@ -405,6 +421,11 @@ export function useRewardSound(enabled: boolean, volumes: RewardSoundVolumes, pr
   };
 
   const stopActiveAudio = () => {
+    if (activeAudioTimeoutRef.current !== null) {
+      window.clearTimeout(activeAudioTimeoutRef.current);
+      activeAudioTimeoutRef.current = null;
+    }
+
     const audio = activeAudioRef.current;
     if (!audio) {
       return;
@@ -541,6 +562,11 @@ export function useRewardSound(enabled: boolean, volumes: RewardSoundVolumes, pr
     activeAudioRef.current = audio;
 
     const fallbackToGenerated = () => {
+      if (activeAudioTimeoutRef.current !== null) {
+        window.clearTimeout(activeAudioTimeoutRef.current);
+        activeAudioTimeoutRef.current = null;
+      }
+
       if (activeAudioRef.current === audio) {
         activeAudioRef.current = null;
       }
@@ -567,14 +593,31 @@ export function useRewardSound(enabled: boolean, volumes: RewardSoundVolumes, pr
     };
 
     audio.addEventListener("error", fallbackToGenerated, { once: true });
+    audio.addEventListener(
+      "ended",
+      () => {
+        if (activeAudioTimeoutRef.current !== null) {
+          window.clearTimeout(activeAudioTimeoutRef.current);
+          activeAudioTimeoutRef.current = null;
+        }
 
-    window.setTimeout(() => {
-      if (activeAudioRef.current === audio) {
-        audio.pause();
-        audio.currentTime = 0;
-        activeAudioRef.current = null;
-      }
-    }, clip.duration * 1000);
+        if (activeAudioRef.current === audio) {
+          activeAudioRef.current = null;
+        }
+      },
+      { once: true }
+    );
+
+    if (clip.maxPlaybackMs) {
+      activeAudioTimeoutRef.current = window.setTimeout(() => {
+        if (activeAudioRef.current === audio) {
+          audio.pause();
+          audio.currentTime = 0;
+          activeAudioRef.current = null;
+        }
+        activeAudioTimeoutRef.current = null;
+      }, clip.maxPlaybackMs);
+    }
 
     void audio.play().catch(() => {
       fallbackToGenerated();

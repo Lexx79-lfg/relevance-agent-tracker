@@ -4,6 +4,25 @@
 
 :root {
   color-scheme: dark;
+  --star-bg: #050816;
+  --star-panel: rgba(10, 18, 36, 0.82);
+  --star-panel-strong: rgba(8, 14, 30, 0.92);
+  --star-border: rgba(125, 211, 252, 0.14);
+  --star-green: #6effa8;
+  --star-green-deep: #1a8f5c;
+  --star-orange: #ff8b3d;
+  --star-orange-soft: rgba(255, 139, 61, 0.18);
+  --star-text: #f8fbff;
+  --deck-bg: #070b14;
+  --deck-panel: rgba(11, 18, 32, 0.88);
+  --deck-panel-deep: rgba(4, 8, 17, 0.92);
+  --deck-line: rgba(128, 178, 170, 0.2);
+  --deck-line-hot: rgba(255, 167, 83, 0.36);
+  --deck-green: #8affb7;
+  --deck-amber: #ffb55f;
+  --deck-red: #ff6f61;
+  --deck-blue: #8ec5ff;
+  --deck-shadow: rgba(0, 0, 0, 0.42);
 }
 
 html,
@@ -14,18 +33,1373 @@ body,
 
 body {
   margin: 0;
-  font-family:
-    Inter,
-    ui-sans-serif,
-    system-ui,
-    -apple-system,
-    BlinkMacSystemFont,
-    "Segoe UI",
-    sans-serif;
+  font-family: "Avenir Next", "Trebuchet MS", "Segoe UI", sans-serif;
+  background:
+    radial-gradient(circle at top, rgba(70, 126, 255, 0.16), transparent 28%),
+    radial-gradient(circle at 20% 18%, rgba(81, 255, 175, 0.1), transparent 22%),
+    radial-gradient(circle at 78% 30%, rgba(255, 141, 72, 0.14), transparent 24%),
+    linear-gradient(180deg, #091121 0%, #040814 44%, #020309 100%);
+  color: var(--star-text);
+}
+
+body::before {
+  background:
+    linear-gradient(rgba(255, 255, 255, 0.028) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.018) 1px, transparent 1px),
+    repeating-linear-gradient(180deg, rgba(255, 255, 255, 0.018) 0 1px, transparent 1px 5px);
+  background-size: 42px 42px, 42px 42px, 100% 6px;
+  content: "";
+  inset: 0;
+  opacity: 0.38;
+  pointer-events: none;
+  position: fixed;
+  z-index: 0;
 }
 
 * {
   box-sizing: border-box;
+}
+
+.mentor-shell button,
+.mentor-shell input,
+.mentor-shell textarea {
+  font: inherit;
+}
+
+.command-deck {
+  isolation: isolate;
+  position: relative;
+}
+
+.command-deck::before {
+  background:
+    radial-gradient(circle at 8% 14%, rgba(138, 255, 183, 0.08), transparent 22%),
+    radial-gradient(circle at 88% 18%, rgba(255, 181, 95, 0.1), transparent 20%),
+    linear-gradient(135deg, rgba(9, 18, 36, 0.72), rgba(2, 5, 13, 0.86));
+  content: "";
+  inset: 0;
+  pointer-events: none;
+  position: fixed;
+  z-index: -1;
+}
+
+.command-panel {
+  position: relative;
+}
+
+.command-panel::before {
+  background:
+    linear-gradient(90deg, transparent 0 14px, rgba(138, 255, 183, 0.3) 14px 64px, transparent 64px),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.06), transparent 18%);
+  border-radius: inherit;
+  content: "";
+  inset: 0;
+  opacity: 0.56;
+  pointer-events: none;
+  position: absolute;
+}
+
+.command-screen {
+  background-image:
+    linear-gradient(rgba(138, 255, 183, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(138, 255, 183, 0.026) 1px, transparent 1px) !important;
+  background-size: 32px 32px !important;
+}
+
+.command-kicker {
+  align-items: center;
+  display: inline-flex;
+  gap: 0.7rem;
+}
+
+.command-kicker::before,
+.status-light {
+  background: var(--deck-green);
+  border-radius: 999px;
+  box-shadow: 0 0 0 4px rgba(138, 255, 183, 0.08), 0 0 18px rgba(138, 255, 183, 0.52);
+  content: "";
+  display: inline-block;
+  flex: 0 0 auto;
+  height: 0.62rem;
+  width: 0.62rem;
+}
+
+.status-light-amber {
+  background: var(--deck-amber);
+  box-shadow: 0 0 0 4px rgba(255, 181, 95, 0.08), 0 0 18px rgba(255, 181, 95, 0.52);
+}
+
+.status-light-red {
+  background: var(--deck-red);
+  box-shadow: 0 0 0 4px rgba(255, 111, 97, 0.08), 0 0 18px rgba(255, 111, 97, 0.52);
+}
+
+.command-tabs {
+  background:
+    linear-gradient(180deg, rgba(17, 28, 47, 0.86), rgba(5, 10, 20, 0.94)),
+    var(--deck-panel-deep);
+  border: 1px solid rgba(142, 197, 255, 0.14);
+  border-radius: 24px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.5),
+    0 18px 48px var(--deck-shadow);
+  padding: 10px;
+}
+
+.command-tab {
+  align-items: center;
+  background:
+    linear-gradient(180deg, rgba(30, 42, 62, 0.94), rgba(9, 14, 25, 0.96)) !important;
+  border: 1px solid rgba(142, 197, 255, 0.16) !important;
+  border-radius: 16px !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    inset 0 -5px 10px rgba(0, 0, 0, 0.22),
+    0 8px 18px rgba(0, 0, 0, 0.22);
+  display: inline-flex;
+  gap: 10px;
+  min-height: 56px;
+  text-align: left;
+}
+
+.command-tab:hover {
+  border-color: rgba(255, 181, 95, 0.36) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    inset 0 -5px 10px rgba(0, 0, 0, 0.22),
+    0 0 24px rgba(255, 181, 95, 0.1);
+}
+
+.command-tab-active {
+  background:
+    linear-gradient(180deg, rgba(38, 55, 52, 0.98), rgba(11, 27, 22, 0.98)) !important;
+  border-color: rgba(138, 255, 183, 0.54) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    inset 0 -6px 12px rgba(0, 0, 0, 0.26),
+    0 0 26px rgba(138, 255, 183, 0.13);
+}
+
+.command-tab-code {
+  color: var(--deck-amber);
+  font-size: 0.76rem;
+  font-weight: 900;
+  letter-spacing: 0.16em;
+}
+
+.command-sound-toggle {
+  align-items: center;
+  background:
+    linear-gradient(180deg, rgba(30, 42, 62, 0.86), rgba(8, 13, 24, 0.92)) !important;
+  border: 1px solid rgba(142, 197, 255, 0.18) !important;
+  border-radius: 999px;
+  color: #f8fafc;
+  cursor: pointer;
+  display: inline-flex;
+  flex: 0 0 auto;
+  gap: 9px;
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  padding: 9px 13px;
+}
+
+.command-button,
+.mentor-primary-button,
+.mentor-soft-button {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.09),
+    inset 0 -4px 8px rgba(0, 0, 0, 0.22);
+  transition:
+    transform 120ms ease,
+    filter 120ms ease,
+    opacity 120ms ease,
+    box-shadow 160ms ease,
+    background 160ms ease,
+    border-color 160ms ease;
+  will-change: transform;
+}
+
+.command-card {
+  position: relative;
+}
+
+.command-card::after {
+  background:
+    linear-gradient(90deg, rgba(255, 181, 95, 0.4), transparent 34%),
+    linear-gradient(90deg, transparent 66%, rgba(138, 255, 183, 0.24));
+  content: "";
+  height: 1px;
+  inset: 0 16px auto;
+  opacity: 0.64;
+  position: absolute;
+}
+
+.command-event-backdrop {
+  background:
+    radial-gradient(circle at 50% 42%, rgba(255, 181, 95, 0.18), transparent 24%),
+    radial-gradient(circle at 50% 58%, rgba(138, 255, 183, 0.12), transparent 30%),
+    rgba(1, 4, 13, 0.84) !important;
+}
+
+.command-event-panel {
+  position: relative;
+}
+
+.command-event-panel::after {
+  background:
+    linear-gradient(90deg, transparent, rgba(138, 255, 183, 0.36), transparent),
+    repeating-linear-gradient(90deg, rgba(255, 181, 95, 0.22) 0 8px, transparent 8px 20px);
+  border-radius: inherit;
+  content: "";
+  inset: auto 28px 18px;
+  height: 2px;
+  opacity: 0.58;
+  pointer-events: none;
+  position: absolute;
+}
+
+.command-choice-active {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    inset 0 -5px 10px rgba(0, 0, 0, 0.22),
+    0 0 24px rgba(138, 255, 183, 0.14) !important;
+}
+
+.mentor-shell button:focus-visible,
+.mentor-shell input:focus-visible,
+.mentor-shell textarea:focus-visible {
+  outline: 2px solid rgba(134, 239, 172, 0.72);
+  outline-offset: 3px;
+}
+
+.mentor-shell input:focus,
+.mentor-shell textarea:focus {
+  border-color: rgba(134, 239, 172, 0.56) !important;
+  box-shadow: 0 0 0 4px rgba(134, 239, 172, 0.08);
+  background: rgba(2, 8, 23, 0.88) !important;
+}
+
+.mentor-entrance {
+  animation: mentorFadeUp 420ms ease-out both;
+}
+
+.mentor-panel,
+.mentor-side-card,
+.mentor-response-card {
+  animation: mentorFadeUp 520ms ease-out both;
+}
+
+.mentor-side-card:nth-of-type(2) {
+  animation-delay: 60ms;
+}
+
+.mentor-side-card:nth-of-type(3) {
+  animation-delay: 120ms;
+}
+
+.mentor-mode-button:hover,
+.mentor-soft-button:hover,
+.mentor-primary-button:hover {
+  transform: translateY(-1px);
+}
+
+.mentor-mode-button:hover,
+.mentor-soft-button:hover {
+  border-color: rgba(203, 213, 225, 0.34) !important;
+  background: rgba(15, 23, 42, 0.92) !important;
+}
+
+.mentor-primary-button:hover {
+  filter: brightness(1.03);
+  box-shadow: 0 12px 30px rgba(134, 239, 172, 0.16);
+}
+
+.mission-action-button {
+  background:
+    radial-gradient(circle at 20% 12%, rgba(255, 255, 255, 0.18), transparent 26%),
+    linear-gradient(180deg, rgba(255, 181, 95, 0.96), rgba(216, 97, 36, 0.94)) !important;
+  border: 1px solid rgba(255, 218, 151, 0.58) !important;
+  border-radius: 16px !important;
+  color: #180b03 !important;
+  font-size: 0.92rem !important;
+  font-weight: 950 !important;
+  letter-spacing: 0.12em !important;
+  min-height: 50px;
+  padding: 15px 18px !important;
+  text-transform: uppercase;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.24),
+    inset 0 -6px 10px rgba(62, 20, 6, 0.3),
+    0 0 0 1px rgba(255, 181, 95, 0.16),
+    0 16px 34px rgba(251, 146, 60, 0.18) !important;
+}
+
+.mission-action-button:hover {
+  filter: brightness(1.05) saturate(1.04);
+  transform: translateY(-1px);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.28),
+    inset 0 -6px 10px rgba(62, 20, 6, 0.32),
+    0 0 0 3px rgba(251, 191, 36, 0.1),
+    0 18px 38px rgba(251, 146, 60, 0.22) !important;
+}
+
+.mentor-mode-button:active,
+.mentor-soft-button:active,
+.mentor-primary-button:active {
+  filter: brightness(1.05);
+  opacity: 0.94;
+  transform: scale(0.97);
+}
+
+.mentor-primary-button.mission-action-button:active {
+  filter: brightness(1.02) saturate(1.02);
+  opacity: 0.98;
+  transform: scale(0.965);
+}
+
+.onboarding-panel {
+  overflow: hidden;
+}
+
+.onboarding-panel::after {
+  animation: onboardingAmbientDrift 3200ms ease-in-out infinite alternate;
+  background:
+    radial-gradient(circle at 14% 22%, rgba(134, 239, 172, 0.09), transparent 20%),
+    radial-gradient(circle at 86% 16%, rgba(251, 191, 36, 0.09), transparent 18%),
+    radial-gradient(circle at 62% 88%, rgba(125, 211, 252, 0.08), transparent 22%);
+  content: "";
+  inset: 0;
+  opacity: 0.72;
+  pointer-events: none;
+  position: absolute;
+  z-index: 0;
+}
+
+.onboarding-panel > * {
+  position: relative;
+  z-index: 1;
+}
+
+.mentor-log-entry {
+  transition: border-color 180ms ease, background 180ms ease;
+}
+
+.mentor-log-entry:hover {
+  border-color: rgba(134, 239, 172, 0.16) !important;
+  background: rgba(6, 17, 32, 0.92) !important;
+}
+
+@keyframes mentorFadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes onboardingStepIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes onboardingAmbientDrift {
+  from {
+    opacity: 0.5;
+    transform: translate3d(-8px, -4px, 0) scale(1);
+  }
+  to {
+    opacity: 0.78;
+    transform: translate3d(8px, 5px, 0) scale(1.03);
+  }
+}
+
+@keyframes mentorFuelPulse {
+  0% {
+    opacity: 0;
+    transform: scale(0.82);
+  }
+  18% {
+    opacity: 1;
+    transform: scale(1.02);
+  }
+  52% {
+    opacity: 0.72;
+    transform: scale(1.1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.24);
+  }
+}
+
+@keyframes journeyRocketFloat {
+  0%,
+  100% {
+    transform: translateY(-8px);
+  }
+  50% {
+    transform: translateY(-14px);
+  }
+}
+
+@keyframes journeyEnginePulse {
+  0% {
+    opacity: 0.42;
+    transform: scaleX(0.62) scaleY(0.42);
+  }
+  14% {
+    opacity: 1;
+    transform: scaleX(1.28) scaleY(1.82);
+  }
+  44% {
+    opacity: 0.88;
+    transform: scaleX(1) scaleY(1.18);
+  }
+  100% {
+    opacity: 0.66;
+    transform: scaleX(1) scaleY(1);
+  }
+}
+
+@keyframes journeyFireTongue {
+  0% {
+    opacity: 0;
+    transform: translateX(-50%) scaleX(0.44) scaleY(0.24);
+  }
+  16% {
+    opacity: 1;
+    transform: translateX(-50%) scaleX(1.08) scaleY(1.28);
+  }
+  48% {
+    opacity: 0.74;
+    transform: translateX(-50%) scaleX(0.82) scaleY(0.88) translateY(7px);
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(-50%) scaleX(0.36) scaleY(0.22) translateY(22px);
+  }
+}
+
+@keyframes journeyPadReflection {
+  0% {
+    opacity: 0;
+    transform: scaleX(0.74);
+  }
+  32% {
+    opacity: 0.72;
+    transform: scaleX(1.16);
+  }
+  100% {
+    opacity: 0.2;
+    transform: scaleX(0.96);
+  }
+}
+
+@keyframes journeySmokeBillow {
+  0% {
+    opacity: 0;
+    transform: translateY(12px) scaleX(0.62) scaleY(0.64);
+    filter: blur(0);
+  }
+  24% {
+    opacity: 0.68;
+    transform: translateY(0) scaleX(1.08) scaleY(0.92);
+    filter: blur(1px);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-16px) scaleX(1.68) scaleY(1.22);
+    filter: blur(4px);
+  }
+}
+
+@keyframes taskCompletionResolve {
+  0% {
+    background-color: rgba(251, 191, 36, 0.06);
+    transform: scale(0.992);
+  }
+  36% {
+    background-color: rgba(134, 239, 172, 0.1);
+    transform: scale(1.004);
+  }
+  100% {
+    background-color: transparent;
+    transform: scale(1);
+  }
+}
+
+@keyframes taskProgressTransfer {
+  0% {
+    opacity: 0;
+    transform: translateY(4px) scaleX(0.96);
+  }
+  18% {
+    opacity: 1;
+    transform: translateY(0) scaleX(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-4px) scaleX(1.02);
+  }
+}
+
+@keyframes taskProgressBead {
+  0% {
+    opacity: 0;
+    transform: translateX(-8px) scale(0.72);
+  }
+  24% {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+  100% {
+    opacity: 0.2;
+    transform: translateX(22px) scale(0.78);
+  }
+}
+
+@keyframes taskTransferPulse {
+  0% {
+    opacity: 0;
+    transform: translateX(-8px) scaleX(0.08);
+  }
+  34% {
+    opacity: 0.88;
+    transform: translateX(18%) scaleX(0.46);
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(66%) scaleX(0.18);
+  }
+}
+
+@keyframes progressQuoteRise {
+  0% {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+  12%,
+  78% {
+    opacity: 0.9;
+    transform: translateY(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-5px);
+  }
+}
+
+@keyframes rocketRewardIdle {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-2px);
+  }
+}
+
+@keyframes rocketRewardTokenPulse {
+  0% {
+    transform: translateY(0) scale(1);
+  }
+  28% {
+    transform: translateY(-2px) scale(1.006);
+  }
+  100% {
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes rocketRewardCheckpointPulse {
+  0% {
+    transform: translateY(0) scale(1);
+  }
+  34% {
+    transform: translateY(-4px) scale(1.01);
+  }
+  100% {
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes rocketRewardCharge {
+  0%,
+  100% {
+    transform: translateY(0) scale(1);
+  }
+  46% {
+    transform: translateY(-1px) scale(1.006);
+  }
+}
+
+@keyframes rocketRewardReducedPulse {
+  0% {
+    opacity: 0.82;
+    transform: scale(1);
+  }
+  40% {
+    opacity: 1;
+    transform: scale(1.012);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@media (max-width: 720px) {
+  .mentor-shell button {
+    min-height: 48px;
+  }
+
+  .mentor-mode-button {
+    min-height: 104px !important;
+  }
+}
+
+.starshooter-panel {
+  --stage-blue: rgba(90, 165, 255, 0.22);
+  --stage-aurora-green: rgba(111,255,167,0.16);
+  --stage-aurora-blue: rgba(94,145,255,0.18);
+  --stage-haze-orange: rgba(255, 152, 86, 0.2);
+  --stage-base-glow: rgba(255,139,61,0.16);
+  --stage-engine-core: rgba(255,183,84,0.82);
+  --stage-engine-bloom: rgba(255,157,68,0.28);
+  --stage-fuel-glow: rgba(110,255,168,0.35);
+  --stage-fuel-border: rgba(111, 255, 167, 0.18);
+  --stage-steam-opacity: 0.5;
+  --stage-reflection-opacity: 0.9;
+  border: 1px solid rgba(141, 178, 255, 0.12);
+  background:
+    linear-gradient(180deg, rgba(14, 23, 44, 0.9), rgba(8, 14, 28, 0.94)),
+    rgba(8, 14, 30, 0.92);
+  border-radius: 32px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    inset 0 0 0 1px rgba(255,255,255,0.015),
+    0 20px 60px rgba(0, 0, 0, 0.32);
+  backdrop-filter: blur(16px);
+}
+
+.starshooter-panel-glow {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    inset 0 0 0 1px rgba(255,255,255,0.015),
+    0 24px 72px rgba(0, 0, 0, 0.34),
+    0 0 0 1px rgba(110, 255, 168, 0.04),
+    0 0 54px rgba(110, 255, 168, 0.07);
+}
+
+.starshooter-stage-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+  border-radius: 9999px;
+  border: 1px solid rgba(110, 255, 168, 0.18);
+  background:
+    linear-gradient(180deg, rgba(15, 35, 26, 0.4), rgba(7, 18, 14, 0.24)),
+    rgba(16, 185, 129, 0.08);
+  padding: 0.5rem 1rem;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.28em;
+  color: rgba(236, 253, 245, 0.96);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.04),
+    0 0 24px rgba(74,222,128,0.08);
+}
+
+.starshooter-kicker {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.42em;
+  color: rgba(110, 255, 168, 0.82);
+}
+
+.starshooter-stat-card {
+  border: 1px solid rgba(121, 168, 255, 0.14);
+  border-radius: 28px;
+  background: linear-gradient(180deg, rgba(12, 21, 40, 0.88), rgba(8, 13, 26, 0.96));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 16px 40px rgba(0, 0, 0, 0.22),
+    0 0 24px rgba(90, 140, 255, 0.03);
+}
+
+.starshooter-launch-stage {
+  position: relative;
+  min-height: 410px;
+  overflow: hidden;
+  border: 1px solid rgba(121, 168, 255, 0.14);
+  border-radius: 32px;
+  background:
+    radial-gradient(circle at 50% 12%, var(--stage-blue), transparent 22%),
+    linear-gradient(180deg, rgba(10, 17, 34, 0.98) 0%, rgba(4, 7, 16, 0.99) 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 24px 60px rgba(0, 0, 0, 0.3);
+}
+
+.starshooter-stage-shift,
+.starshooter-feedback-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.starshooter-scene-frame {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+}
+
+.starshooter-scene-svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.starshooter-stars,
+.starshooter-launch-grid,
+.starshooter-aurora,
+.starshooter-launch-haze,
+.starshooter-launch-bloom,
+.starshooter-launch-reflection,
+.starshooter-launch-tower {
+  position: absolute;
+  inset: 0;
+}
+
+.starshooter-stars {
+  background-image:
+    radial-gradient(circle at 18% 22%, rgba(255,255,255,0.85) 0 1px, transparent 1.5px),
+    radial-gradient(circle at 76% 18%, rgba(255,255,255,0.65) 0 1px, transparent 1.5px),
+    radial-gradient(circle at 60% 32%, rgba(110,255,168,0.75) 0 1px, transparent 1.5px),
+    radial-gradient(circle at 28% 40%, rgba(255,184,123,0.72) 0 1px, transparent 1.5px),
+    radial-gradient(circle at 82% 48%, rgba(255,255,255,0.55) 0 1px, transparent 1.5px);
+  opacity: 0.85;
+}
+
+.starshooter-launch-grid {
+  background:
+    linear-gradient(to right, rgba(111, 160, 255, 0.08) 1px, transparent 1px),
+    linear-gradient(to top, rgba(111, 160, 255, 0.08) 1px, transparent 1px);
+  background-size: 44px 44px;
+  mask-image: linear-gradient(180deg, transparent 0%, rgba(0,0,0,0.2) 18%, rgba(0,0,0,1) 100%);
+}
+
+.starshooter-aurora {
+  background:
+    radial-gradient(circle at 35% 18%, var(--stage-aurora-green), transparent 26%),
+    radial-gradient(circle at 62% 20%, var(--stage-aurora-blue), transparent 30%);
+  opacity: 0.8;
+  filter: blur(14px);
+}
+
+.starshooter-launch-haze {
+  inset: auto -10% 0 -10%;
+  height: 38%;
+  background:
+    radial-gradient(circle at 35% 75%, var(--stage-haze-orange), transparent 22%),
+    radial-gradient(circle at 60% 72%, rgba(255,255,255,0.11), transparent 18%),
+    linear-gradient(180deg, transparent 0%, rgba(255,255,255,0.05) 28%, rgba(255,255,255,0.08) 100%);
+  opacity: 0.78;
+  filter: blur(16px);
+}
+
+.starshooter-launch-bloom {
+  inset: auto 50% 56px auto;
+  width: 180px;
+  height: 180px;
+  transform: translateX(50%);
+  border-radius: 9999px;
+  background: radial-gradient(circle, rgba(255,186,96,0.38) 0%, rgba(255,139,61,0.22) 42%, transparent 72%);
+  filter: blur(10px);
+  opacity: 0.82;
+}
+
+.starshooter-launch-reflection {
+  inset: auto 8% 0 8%;
+  height: 22%;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.08), transparent 35%),
+    linear-gradient(90deg, transparent 0%, rgba(111,255,167,0.14) 42%, rgba(255,139,61,0.2) 50%, rgba(111,255,167,0.14) 58%, transparent 100%);
+  opacity: 0.55;
+}
+
+.starshooter-stage-shift {
+  background:
+    radial-gradient(circle at 50% 20%, rgba(255,255,255,0.08) 0%, transparent 30%),
+    radial-gradient(circle at 50% 72%, rgba(255,188,116,0.16) 0%, transparent 24%),
+    radial-gradient(circle at 28% 24%, var(--stage-aurora-green) 0%, transparent 26%),
+    radial-gradient(circle at 72% 18%, var(--stage-aurora-blue) 0%, transparent 30%);
+  filter: blur(10px);
+  mix-blend-mode: screen;
+}
+
+.starshooter-launch-tower {
+  inset: auto 12% 38px auto;
+  width: 72px;
+  height: 188px;
+  overflow: visible;
+  border-radius: 8px 8px 0 0;
+  background:
+    linear-gradient(to right, transparent 0 10%, rgba(130,160,220,0.08) 10% 12%, transparent 12% 28%, rgba(130,160,220,0.07) 28% 30%, transparent 30% 70%, rgba(130,160,220,0.07) 70% 72%, transparent 72% 88%, rgba(130,160,220,0.08) 88% 90%, transparent 90%),
+    linear-gradient(180deg, rgba(18,32,60,0.92), rgba(7,13,25,0.98));
+  box-shadow:
+    inset 0 0 0 1px rgba(154, 183, 255, 0.14),
+    inset 0 10px 18px rgba(255,255,255,0.03),
+    0 8px 20px rgba(0,0,0,0.32);
+  clip-path: polygon(0 100%, 8% 0, 18% 0, 24% 100%, 36% 100%, 42% 18%, 58% 18%, 64% 100%, 76% 100%, 82% 0, 92% 0, 100% 100%, 100% 0, 0 0);
+  opacity: 0.94;
+}
+
+.starshooter-launch-tower::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 30px;
+  width: 116px;
+  height: 74px;
+  transform: translateX(-50%);
+  background:
+    linear-gradient(180deg, rgba(144,176,255,0.18), rgba(144,176,255,0.04)),
+    linear-gradient(90deg, transparent 0 18%, rgba(111,255,167,0.18) 18% 20%, transparent 20% 80%, rgba(111,255,167,0.18) 80% 82%, transparent 82%),
+    linear-gradient(90deg, rgba(14,24,46,0.9) 0 34%, transparent 34% 66%, rgba(14,24,46,0.9) 66% 100%);
+  clip-path: polygon(0 24%, 18% 24%, 26% 0, 30% 0, 24% 34%, 24% 100%, 18% 100%, 18% 38%, 0 38%, 0 24%, 100% 24%, 82% 24%, 74% 0, 70% 0, 76% 34%, 76% 100%, 82% 100%, 82% 38%, 100% 38%);
+  filter: drop-shadow(0 0 10px rgba(111,255,167,0.08));
+  opacity: 0.96;
+}
+
+.starshooter-launch-tower::after {
+  content: "";
+  position: absolute;
+  inset: 14px 12px 18px;
+  background:
+    linear-gradient(180deg, transparent 0 18%, rgba(140,169,220,0.18) 18% 20%, transparent 20% 46%, rgba(140,169,220,0.14) 46% 48%, transparent 48% 74%, rgba(140,169,220,0.12) 74% 76%, transparent 76%),
+    linear-gradient(90deg, transparent 0 24%, rgba(120,154,222,0.16) 24% 26%, transparent 26% 74%, rgba(120,154,222,0.16) 74% 76%, transparent 76%);
+  opacity: 0.82;
+}
+
+.starshooter-rocket-stack {
+  position: absolute;
+  left: 50%;
+  bottom: 30px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  transform: translateX(-50%);
+}
+
+.starshooter-contact-shadow {
+  position: absolute;
+  z-index: 0;
+  bottom: -4px;
+  width: 188px;
+  height: 34px;
+  border-radius: 9999px;
+  background: radial-gradient(circle, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0.34) 45%, transparent 78%);
+  filter: blur(8px);
+  opacity: 0.9;
+}
+
+.starshooter-base-atmosphere {
+  position: absolute;
+  z-index: 0;
+  bottom: 20px;
+  width: 240px;
+  height: 88px;
+  border-radius: 9999px;
+  background:
+    radial-gradient(circle at 50% 70%, rgba(255,210,150,0.18) 0%, var(--stage-base-glow) 34%, rgba(110,255,168,0.06) 58%, transparent 78%);
+  filter: blur(16px);
+  opacity: 0.82;
+}
+
+.starshooter-engine-reflection {
+  position: absolute;
+  z-index: 1;
+  bottom: -1px;
+  width: 214px;
+  height: 22px;
+  border-radius: 9999px;
+  background:
+    radial-gradient(circle at 50% 50%, rgba(255,215,143,0.44) 0%, rgba(255,139,61,0.26) 32%, rgba(110,255,168,0.1) 58%, transparent 78%);
+  filter: blur(4px);
+  opacity: var(--stage-reflection-opacity);
+}
+
+.starshooter-engine-glow {
+  position: absolute;
+  bottom: 44px;
+  width: 110px;
+  height: 110px;
+  border-radius: 9999px;
+  background: radial-gradient(circle, rgba(255,196,118,0.48) 0%, rgba(255,139,61,0.24) 38%, rgba(110,255,168,0.08) 58%, transparent 78%);
+  filter: blur(8px);
+  animation: starshooterPulse 3.2s ease-in-out infinite;
+}
+
+.starshooter-engine-bloom {
+  position: absolute;
+  z-index: 1;
+  bottom: 40px;
+  width: 156px;
+  height: 156px;
+  border-radius: 9999px;
+  background:
+    radial-gradient(circle, rgba(255,223,159,0.38) 0%, var(--stage-engine-bloom) 28%, rgba(255,104,33,0.14) 52%, transparent 74%);
+  filter: blur(12px);
+  opacity: 0.82;
+  animation: starshooterPulse 3.8s ease-in-out infinite;
+}
+
+.starshooter-engine-core {
+  position: absolute;
+  z-index: 1;
+  bottom: 68px;
+  width: 34px;
+  height: 54px;
+  border-radius: 9999px 9999px 45% 45%;
+  background: linear-gradient(180deg, rgba(255,240,201,0.95), var(--stage-engine-core) 46%, rgba(255,120,33,0.35) 100%);
+  filter: blur(1px);
+  box-shadow:
+    0 0 26px rgba(255,165,72,0.45),
+    0 0 54px rgba(255,165,72,0.28);
+  animation: starshooterPulse 2.4s ease-in-out infinite;
+}
+
+.starshooter-steam {
+  position: absolute;
+  z-index: 0;
+  bottom: 14px;
+  height: 90px;
+  border-radius: 9999px;
+  background:
+    radial-gradient(circle at 50% 65%, rgba(255,255,255,0.22) 0%, rgba(255,255,255,0.12) 28%, rgba(255,201,152,0.08) 42%, transparent 76%);
+  filter: blur(14px);
+  opacity: var(--stage-steam-opacity);
+  animation: starshooterSteamLift 6s ease-in-out infinite;
+}
+
+.starshooter-steam-left {
+  left: -84px;
+  width: 120px;
+  transform: rotate(-9deg);
+  animation-delay: -1.8s;
+}
+
+.starshooter-steam-center {
+  width: 148px;
+  height: 104px;
+}
+
+.starshooter-steam-right {
+  right: -84px;
+  width: 120px;
+  transform: rotate(9deg);
+  animation-delay: -3s;
+}
+
+.starshooter-rocket-svg {
+  position: relative;
+  z-index: 2;
+  width: 118px;
+  height: 284px;
+  box-shadow:
+    0 18px 45px rgba(0, 0, 0, 0.35),
+    0 0 20px rgba(255,255,255,0.05);
+}
+
+.starshooter-launch-ring {
+  position: absolute;
+  bottom: 42px;
+  width: 170px;
+  height: 170px;
+  border-radius: 9999px;
+  border: 1px solid rgba(111, 255, 167, 0.18);
+  box-shadow: 0 0 50px rgba(111, 255, 167, 0.08);
+  animation: starshooterPulse 4.8s ease-in-out infinite;
+}
+
+.starshooter-launch-pad {
+  position: relative;
+  width: 250px;
+  height: 30px;
+  margin-top: 24px;
+  border-radius: 9999px;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.18), rgba(255,255,255,0.03)),
+    linear-gradient(90deg, rgba(45, 65, 108, 0.9), rgba(19, 28, 47, 0.96));
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.08),
+    0 0 0 1px rgba(121, 168, 255, 0.12),
+    0 16px 34px rgba(0,0,0,0.34);
+}
+
+.starshooter-launch-pad::after {
+  content: "";
+  position: absolute;
+  inset: 8px 22px;
+  border-radius: 9999px;
+  background: linear-gradient(90deg, rgba(110,255,168,0.14), rgba(255,139,61,0.1), rgba(110,255,168,0.04));
+}
+
+.starshooter-launch-pad::before {
+  content: "";
+  position: absolute;
+  inset: 3px 40px 14px;
+  border-radius: 9999px;
+  background:
+    linear-gradient(90deg, transparent 0%, rgba(255,213,148,0.24) 32%, rgba(255,139,61,0.28) 50%, rgba(255,213,148,0.24) 68%, transparent 100%);
+  filter: blur(6px);
+  opacity: 0.78;
+}
+
+.starshooter-thrust-flicker {
+  position: absolute;
+  left: 50%;
+  bottom: 94px;
+  width: 72px;
+  height: 92px;
+  transform: translateX(-50%);
+  border-radius: 9999px 9999px 48% 48%;
+  background:
+    radial-gradient(circle at 50% 18%, rgba(255,247,214,0.92) 0%, rgba(255,206,126,0.74) 18%, rgba(255,128,42,0.34) 48%, transparent 74%);
+  filter: blur(2px);
+}
+
+.starshooter-thrust-plume {
+  position: absolute;
+  left: 50%;
+  bottom: 18px;
+  width: 108px;
+  height: 134px;
+  transform: translateX(-50%);
+  transform-origin: top center;
+  clip-path: polygon(50% 0%, 68% 10%, 79% 28%, 88% 48%, 82% 72%, 62% 100%, 38% 100%, 18% 72%, 12% 48%, 21% 28%, 32% 10%);
+  background:
+    linear-gradient(180deg, rgba(255,245,222,0.94) 0%, rgba(255,207,132,0.84) 16%, rgba(255,155,65,0.52) 42%, rgba(255,108,33,0.2) 72%, transparent 100%);
+  filter: blur(4px);
+}
+
+.starshooter-thrust-plume-milestone {
+  width: 138px;
+  height: 180px;
+  background:
+    linear-gradient(180deg, rgba(255,248,229,0.96) 0%, rgba(255,222,162,0.88) 14%, rgba(255,170,78,0.68) 42%, rgba(255,110,31,0.32) 74%, transparent 100%);
+  filter: blur(6px);
+}
+
+.starshooter-thrust-core-pulse {
+  position: absolute;
+  left: 50%;
+  bottom: 76px;
+  width: 34px;
+  height: 58px;
+  transform: translateX(-50%);
+  border-radius: 9999px 9999px 54% 54%;
+  background: linear-gradient(180deg, rgba(255,253,239,0.96), rgba(255,209,128,0.86) 42%, rgba(255,128,42,0.4) 100%);
+  box-shadow:
+    0 0 18px rgba(255,201,120,0.52),
+    0 0 40px rgba(255,139,61,0.22);
+}
+
+.starshooter-thrust-core-pulse-milestone {
+  width: 42px;
+  height: 72px;
+  box-shadow:
+    0 0 24px rgba(255,216,144,0.68),
+    0 0 54px rgba(255,139,61,0.3);
+}
+
+.starshooter-thrust-hold-shell {
+  position: absolute;
+  left: 50%;
+  bottom: 62px;
+  width: 92px;
+  height: 110px;
+  transform: translateX(-50%);
+  border-radius: 9999px 9999px 58% 58%;
+  background:
+    radial-gradient(circle at 50% 18%, rgba(255,242,200,0.14) 0%, rgba(255,186,92,0.16) 24%, rgba(255,130,40,0.1) 52%, transparent 76%);
+  filter: blur(8px);
+}
+
+.starshooter-pad-reflection-pulse {
+  position: absolute;
+  left: 50%;
+  bottom: 16px;
+  width: 248px;
+  height: 46px;
+  transform: translateX(-50%);
+  border-radius: 9999px;
+  background:
+    radial-gradient(circle at 50% 46%, rgba(255,236,186,0.4) 0%, rgba(255,173,82,0.26) 32%, rgba(110,255,168,0.08) 58%, transparent 78%);
+  filter: blur(7px);
+}
+
+.starshooter-pad-reflection-pulse-milestone {
+  width: 286px;
+  height: 60px;
+  background:
+    radial-gradient(circle at 50% 44%, rgba(255,241,202,0.54) 0%, rgba(255,181,84,0.34) 30%, rgba(110,255,168,0.1) 54%, transparent 76%);
+  filter: blur(8px);
+}
+
+.starshooter-steam-kick {
+  position: absolute;
+  left: 50%;
+  bottom: 4px;
+  width: 208px;
+  height: 110px;
+  transform: translateX(-50%);
+  border-radius: 9999px;
+  background:
+    radial-gradient(circle at 50% 70%, rgba(255,255,255,0.16) 0%, rgba(255,255,255,0.12) 24%, rgba(255,198,152,0.1) 40%, transparent 74%);
+  filter: blur(16px);
+}
+
+.starshooter-steam-kick-milestone {
+  width: 256px;
+  height: 152px;
+  background:
+    radial-gradient(circle at 50% 68%, rgba(255,255,255,0.22) 0%, rgba(255,255,255,0.16) 22%, rgba(255,206,154,0.16) 38%, rgba(110,255,168,0.06) 58%, transparent 80%);
+  filter: blur(18px);
+}
+
+.starshooter-fuel-shell {
+  padding: 12px 12px 10px;
+  border-radius: 9999px;
+  border: 1px solid var(--stage-fuel-border);
+  background: rgba(6, 12, 25, 0.9);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.04),
+    0 0 36px rgba(110,255,168,0.1);
+}
+
+.starshooter-fuel-track {
+  overflow: hidden;
+  position: relative;
+  height: 28px;
+  border-radius: 9999px;
+  background: linear-gradient(180deg, rgba(10, 26, 18, 0.94), rgba(5, 14, 10, 0.98));
+  box-shadow:
+    inset 0 0 0 1px rgba(111,255,167,0.08),
+    inset 0 0 28px rgba(110,255,168,0.05);
+}
+
+.starshooter-fuel-feedback {
+  position: absolute;
+  inset: 1px;
+  border-radius: inherit;
+  background:
+    linear-gradient(90deg, rgba(110,255,168,0) 0%, rgba(208,255,188,0.28) 45%, rgba(110,255,168,0.08) 100%);
+  box-shadow:
+    inset 0 0 24px rgba(236,255,245,0.12),
+    0 0 24px rgba(110,255,168,0.18);
+  transform-origin: center;
+  pointer-events: none;
+}
+
+.starshooter-fuel-feedback-milestone {
+  background:
+    linear-gradient(90deg, rgba(255,180,94,0.06) 0%, rgba(233,255,190,0.36) 42%, rgba(255,154,68,0.12) 100%);
+  box-shadow:
+    inset 0 0 30px rgba(255,248,222,0.18),
+    0 0 34px rgba(255,166,78,0.24),
+    0 0 48px rgba(110,255,168,0.18);
+}
+
+.starshooter-fuel-track::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(to right, rgba(255,255,255,0.08) 1px, transparent 1px);
+  background-size: 42px 100%;
+  opacity: 0.24;
+  pointer-events: none;
+}
+
+.starshooter-fuel-fill {
+  position: relative;
+  height: 100%;
+  border-radius: inherit;
+  background:
+    linear-gradient(90deg, #5bffac 0%, #9dffc9 45%, #d9ffb4 100%),
+    linear-gradient(180deg, rgba(255,255,255,0.4), transparent);
+  box-shadow:
+    inset 0 0 16px rgba(255,255,255,0.24),
+    0 0 28px var(--stage-fuel-glow);
+  animation: starshooterFuelFlow 3.8s linear infinite;
+}
+
+.starshooter-panel[data-stage="2"] {
+  --stage-blue: rgba(92, 160, 255, 0.24);
+  --stage-aurora-green: rgba(108, 255, 199, 0.18);
+  --stage-aurora-blue: rgba(103, 168, 255, 0.2);
+  --stage-engine-core: rgba(255, 190, 96, 0.86);
+  --stage-engine-bloom: rgba(255, 163, 78, 0.32);
+  --stage-fuel-glow: rgba(110,255,168,0.4);
+  --stage-reflection-opacity: 0.94;
+}
+
+.starshooter-panel[data-stage="3"] {
+  --stage-blue: rgba(128, 156, 255, 0.22);
+  --stage-aurora-green: rgba(138, 255, 217, 0.14);
+  --stage-aurora-blue: rgba(150, 162, 255, 0.22);
+  --stage-haze-orange: rgba(255, 178, 120, 0.18);
+  --stage-base-glow: rgba(210, 190, 255, 0.12);
+  --stage-engine-core: rgba(255, 205, 130, 0.88);
+  --stage-engine-bloom: rgba(255, 196, 126, 0.26);
+  --stage-fuel-glow: rgba(170,255,198,0.42);
+  --stage-steam-opacity: 0.42;
+}
+
+.starshooter-panel[data-stage="4"] {
+  --stage-blue: rgba(120, 88, 255, 0.16);
+  --stage-aurora-green: rgba(111,255,167,0.12);
+  --stage-aurora-blue: rgba(255, 130, 92, 0.18);
+  --stage-haze-orange: rgba(255, 114, 64, 0.26);
+  --stage-base-glow: rgba(255, 114, 64, 0.22);
+  --stage-engine-core: rgba(255, 165, 78, 0.92);
+  --stage-engine-bloom: rgba(255, 122, 54, 0.36);
+  --stage-fuel-glow: rgba(124,255,182,0.46);
+  --stage-fuel-border: rgba(149, 255, 193, 0.24);
+  --stage-steam-opacity: 0.36;
+}
+
+.starshooter-panel[data-stage="5"] {
+  --stage-blue: rgba(72, 112, 255, 0.14);
+  --stage-aurora-green: rgba(118, 168, 255, 0.12);
+  --stage-aurora-blue: rgba(157, 95, 255, 0.2);
+  --stage-haze-orange: rgba(124, 98, 255, 0.14);
+  --stage-base-glow: rgba(126, 114, 255, 0.16);
+  --stage-engine-core: rgba(255, 220, 148, 0.94);
+  --stage-engine-bloom: rgba(129, 118, 255, 0.26);
+  --stage-fuel-glow: rgba(155,255,214,0.5);
+  --stage-fuel-border: rgba(169, 255, 219, 0.26);
+  --stage-steam-opacity: 0.26;
+  --stage-reflection-opacity: 0.8;
+}
+
+.starshooter-fuel-fill::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(120deg, transparent 0%, rgba(255,255,255,0.18) 42%, transparent 60%);
+  animation: starshooterShimmer 2.8s linear infinite;
+}
+
+.starshooter-stat-tile {
+  border-radius: 28px;
+  border: 1px solid rgba(121, 168, 255, 0.12);
+  background: linear-gradient(180deg, rgba(8, 16, 31, 0.84), rgba(6, 11, 22, 0.94));
+  padding: 22px;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.04),
+    0 12px 28px rgba(0,0,0,0.2);
+}
+
+@keyframes starshooterPulse {
+  0%,
+  100% {
+    opacity: 0.82;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.04);
+  }
+}
+
+@keyframes starshooterFuelFlow {
+  0% {
+    filter: saturate(1) brightness(0.98);
+  }
+  50% {
+    filter: saturate(1.08) brightness(1.06);
+  }
+  100% {
+    filter: saturate(1) brightness(0.98);
+  }
+}
+
+@keyframes starshooterShimmer {
+  0% {
+    transform: translateX(-120%);
+  }
+  100% {
+    transform: translateX(180%);
+  }
+}
+
+@keyframes starshooterSteamLift {
+  0%,
+  100% {
+    opacity: 0.34;
+    transform: translateY(10px) scale(0.96);
+  }
+  50% {
+    opacity: 0.58;
+    transform: translateY(-8px) scale(1.04);
+  }
+}
+
+@keyframes mentorCompletionGlow {
+  0% {
+    transform: scale(0.992);
+  }
+  22% {
+    transform: scale(1.012);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes mentorCompletionButton {
+  0% {
+    transform: translateY(1px) scale(0.98);
+  }
+  35% {
+    transform: translateY(-1px) scale(1.04);
+  }
+  100% {
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes mentorCompletionReadout {
+  0% {
+    filter: brightness(1);
+    transform: translateY(0);
+  }
+  35% {
+    filter: brightness(1.3);
+    transform: translateY(-1px);
+  }
+  100% {
+    filter: brightness(1);
+    transform: translateY(0);
+  }
 }
 
 .slider::-webkit-slider-thumb {
@@ -34,16 +1408,16 @@ body {
   height: 18px;
   width: 18px;
   border-radius: 9999px;
-  background: #e2e8f0;
-  border: 2px solid #0f172a;
-  box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.18);
+  background: #f7fbff;
+  border: 2px solid #114a35;
+  box-shadow: 0 0 0 4px rgba(110, 255, 168, 0.18);
 }
 
 .slider::-moz-range-thumb {
   height: 18px;
   width: 18px;
   border-radius: 9999px;
-  background: #e2e8f0;
-  border: 2px solid #0f172a;
-  box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.18);
+  background: #f7fbff;
+  border: 2px solid #114a35;
+  box-shadow: 0 0 0 4px rgba(110, 255, 168, 0.18);
 }

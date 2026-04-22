@@ -1,362 +1,214 @@
-import React, { useEffect, useState } from "react";
-import { motion } from "framer-motion";
-import {
-  Minus,
-  Plus,
-  Volume2,
-} from "lucide-react";
-import { HeaderHero } from "./components/HeaderHero";
-import { RecentLogs } from "./components/RecentLogs";
-import { StatsGrid } from "./components/StatsGrid";
-import { CelebrationBurst } from "./components/CelebrationBurst";
-import { REWARD_PROFILES, RewardProfileName, useRewardSound } from "./hooks/useRewardSound";
-import { TrackerState, daysBetween, getDefaultState, safeLoad, save, todayKey } from "./lib/tracker";
+import { useState, type CSSProperties } from "react";
+import { MilestoneOverlay } from "./components/MilestoneOverlay";
+import { OnboardingFlow } from "./components/OnboardingFlow";
+import { useJourney } from "./context/JourneyContext";
+import { isCommandSoundEnabled, playCommandSound, setCommandSoundEnabled } from "./lib/commandSound";
+import { CalendarPage } from "./pages/CalendarPage";
+import { JourneyPage } from "./pages/JourneyPage";
+import { MentorHomePage } from "./pages/MentorHomePage";
+import { RegulationPage } from "./pages/RegulationPage";
+import { SettingsPage } from "./pages/SettingsPage";
+import { TasksPage } from "./pages/TasksPage";
 
-const QUOTES = [
-  "Do what you can, with what you have, where you are. — Theodore Roosevelt",
-  "The best way to predict the future is to create it. — Peter Drucker",
-  "Action is the foundational key to all success. — Pablo Picasso",
-  "I didn't need a better answer to 'If.' I needed a way to move forward.",
-  "A mission completed is stronger than a perfect plan delayed.",
+type AppPage = "home" | "tasks" | "calendar" | "support" | "journey" | "settings";
+
+const APP_PAGES: Array<{ id: AppPage; label: string; subtitle: string }> = [
+  { id: "home", label: "Home", subtitle: "Guide" },
+  { id: "tasks", label: "Tasks", subtitle: "Focus" },
+  { id: "calendar", label: "Calendar", subtitle: "Time" },
+  { id: "support", label: "Support", subtitle: "Steady" },
+  { id: "journey", label: "Journey", subtitle: "Progress" },
+  { id: "settings", label: "Settings", subtitle: "Setup" },
 ];
 
-const HEADLINES = [
-  "You are not behind. You are building.",
-  "One mission. One token. One step forward.",
-  "Action beats doubt.",
-  "Small wins change lives.",
-  "Complete the mission. Claim the reward.",
-];
+function App() {
+  const [activePage, setActivePage] = useState<AppPage>("home");
+  const [soundEnabled, setSoundEnabled] = useState(() => isCommandSoundEnabled());
+  const { isEditingProfile, isOnboarded } = useJourney();
+  const homeActive = activePage === "home";
 
-const REWARD_PROFILE_NAME: RewardProfileName = "default";
+  function handleToggleSound() {
+    const nextSoundEnabled = !soundEnabled;
 
-type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
-  variant?: "default" | "outline";
-};
-
-function cn(...parts: Array<string | false | null | undefined>) {
-  return parts.filter(Boolean).join(" ");
-}
-
-function Card({
-  className,
-  ...props
-}: React.HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn("rounded-xl border shadow-sm", className)} {...props} />;
-}
-
-function CardHeader({
-  className,
-  ...props
-}: React.HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn("flex flex-col space-y-1.5 p-6", className)} {...props} />;
-}
-
-function CardTitle({
-  className,
-  ...props
-}: React.HTMLAttributes<HTMLHeadingElement>) {
-  return <h3 className={cn("font-semibold leading-none tracking-tight", className)} {...props} />;
-}
-
-function CardContent({
-  className,
-  ...props
-}: React.HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn("p-6 pt-0", className)} {...props} />;
-}
-
-function Button({ className, variant = "default", type = "button", ...props }: ButtonProps) {
-  return (
-    <button
-      type={type}
-      className={cn(
-        "inline-flex items-center justify-center whitespace-nowrap rounded-md px-4 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 disabled:pointer-events-none disabled:opacity-50",
-        variant === "outline"
-          ? "border border-slate-600 bg-transparent text-slate-100"
-          : "bg-slate-100 text-slate-950",
-        className
-      )}
-      {...props}
-    />
-  );
-}
-
-function Input({ className, type = "text", ...props }: React.InputHTMLAttributes<HTMLInputElement>) {
-  return (
-    <input
-      type={type}
-      className={cn(
-        "flex h-10 w-full rounded-md border border-slate-600 bg-transparent px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-slate-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 disabled:cursor-not-allowed disabled:opacity-50",
-        className
-      )}
-      {...props}
-    />
-  );
-}
-
-function Progress({ value = 0, className }: { value?: number; className?: string }) {
-  const safeValue = Math.max(0, Math.min(100, value));
-  return (
-    <div className={cn("relative w-full overflow-hidden rounded-full bg-slate-700/70", className)}>
-      <div
-        className="h-full rounded-full bg-gradient-to-r from-emerald-400 via-sky-400 to-amber-300 transition-[width] duration-300"
-        style={{ width: `${safeValue}%` }}
-      />
-    </div>
-  );
-}
-
-function Badge({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
-  return (
-    <div
-      className={cn(
-        "inline-flex items-center rounded-full border border-transparent px-2.5 py-0.5 text-xs font-semibold transition-colors",
-        className
-      )}
-      {...props}
-    />
-  );
-}
-
-function Slider({
-  value,
-  min = 0,
-  max = 100,
-  step = 1,
-  onValueChange,
-}: {
-  value: number[];
-  min?: number;
-  max?: number;
-  step?: number;
-  onValueChange?: (value: number[]) => void;
-}) {
-  return (
-    <input
-      type="range"
-      min={min}
-      max={max}
-      step={step}
-      value={value[0] ?? min}
-      onChange={(event) => onValueChange?.([Number(event.target.value)])}
-      className="slider h-2 w-full cursor-pointer appearance-none rounded-full bg-slate-700"
-    />
-  );
-}
-
-export default function App() {
-  const [state, setState] = useState<TrackerState>(() => safeLoad());
-  const [burstKey, setBurstKey] = useState(0);
-  const [message, setMessage] = useState("Welcome, Relevance Agent.");
-  const [logText, setLogText] = useState("");
-  const [lastBurstWasMilestone, setLastBurstWasMilestone] = useState(false);
-
-  useEffect(() => {
-    save(state);
-  }, [state]);
-
-  const playSound = useRewardSound(state.soundOn, {
-    regular: state.regularVolume,
-    milestone: state.milestoneVolume,
-  }, REWARD_PROFILES[REWARD_PROFILE_NAME]);
-  const milestoneMod = state.tokens % state.milestone;
-  const toNextMilestone = state.milestone - (milestoneMod || state.milestone);
-  const progressValue = (milestoneMod / state.milestone) * 100;
-  const quote = QUOTES[state.tokens % QUOTES.length];
-  const headline = HEADLINES[state.tokens % HEADLINES.length];
-
-  const addToken = () => {
-    const today = todayKey();
-    let newStreak = 1;
-
-    if (state.lastTokenDate) {
-      const gap = daysBetween(state.lastTokenDate, today);
-      if (gap === 0) {
-        newStreak = state.streak;
-      } else if (gap === 1) {
-        newStreak = state.streak + 1;
-      }
-    }
-
-    const newTokens = state.tokens + 1;
-    const hitMilestone = newTokens % state.milestone === 0;
-
-    setState((previous) => ({
-      ...previous,
-      tokens: newTokens,
-      streak: newStreak,
-      lastTokenDate: today,
-      notes:
-        logText.trim().length > 0
-          ? [{ date: new Date().toLocaleString(), text: logText.trim() }, ...previous.notes].slice(0, 20)
-          : previous.notes,
-    }));
-
-    setLogText("");
-    setLastBurstWasMilestone(hitMilestone);
-    setBurstKey((current) => current + 1);
-    playSound(hitMilestone ? "milestone" : "token");
-    setMessage(hitMilestone ? `Milestone reached: ${newTokens} tokens. Yaaaaay.` : "+1 token earned.");
-  };
-
-  const removeToken = () => {
-    if (state.tokens <= 0) {
+    if (nextSoundEnabled) {
+      setCommandSoundEnabled(true);
+      setSoundEnabled(true);
+      playCommandSound("confirm");
       return;
     }
 
-    setState((previous) => ({ ...previous, tokens: previous.tokens - 1 }));
-    setMessage("Removed 1 token.");
-  };
+    playCommandSound("confirm");
+    setCommandSoundEnabled(false);
+    setSoundEnabled(false);
+  }
 
-  const resetAll = () => {
-    setState({
-      ...getDefaultState(),
-      soundOn: state.soundOn,
-      regularVolume: state.regularVolume,
-      milestoneVolume: state.milestoneVolume,
-      todayMission: state.todayMission || "Your Mission",
-    });
-    setLogText("");
-    setMessage("Tracker reset.");
-  };
+  const navigation = (
+    <nav
+      className="command-tabs"
+      aria-label="Relevance Agent pages"
+      style={{
+        display: "flex",
+        flexWrap: "wrap",
+        gap: homeActive ? "7px" : "10px",
+        marginBottom: homeActive ? 0 : "clamp(18px, 3vw, 24px)",
+        marginTop: homeActive ? "clamp(16px, 3vw, 22px)" : 0,
+        opacity: homeActive ? 0.58 : 1,
+      }}
+    >
+      {APP_PAGES.map((page) => {
+        const active = activePage === page.id;
+
+        return (
+          <button
+            className={`mentor-soft-button command-tab ${active ? "command-tab-active" : ""}`}
+            key={page.id}
+            onClick={() => {
+              playCommandSound("tab");
+              setActivePage(page.id);
+            }}
+            style={{
+              background: active ? "rgba(134, 239, 172, 0.12)" : "rgba(15, 23, 42, 0.5)",
+              border: active
+                ? "1px solid rgba(134, 239, 172, 0.42)"
+                : "1px solid rgba(148, 163, 184, 0.12)",
+              borderRadius: "999px",
+              color: "#f8fafc",
+              cursor: "pointer",
+              fontSize: homeActive ? "0.84rem" : "0.95rem",
+              minHeight: homeActive ? "40px" : "48px",
+              padding: homeActive ? "7px 10px" : "10px 14px",
+              transition: "transform 180ms ease, border-color 180ms ease, background 180ms ease",
+            }}
+          >
+            <span className={`status-light ${active ? "" : "status-light-amber"}`} />
+            <span style={{ fontWeight: 800 }}>{page.label}</span>
+            {!homeActive && <span style={{ color: "#94a3b8", marginLeft: "8px" }}>{page.subtitle}</span>}
+          </button>
+        );
+      })}
+    </nav>
+  );
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 p-4 text-slate-100 md:p-8">
-      <div className="mx-auto max-w-5xl space-y-6">
-        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
-          <Card className="relative overflow-hidden rounded-3xl border-slate-700 bg-slate-900/80 backdrop-blur">
-            <div className="pointer-events-none fixed inset-0 z-50">
-              <CelebrationBurst burstKey={burstKey} isMilestone={lastBurstWasMilestone} />
+    <main
+      className="mentor-shell command-deck"
+      style={{
+        minHeight: "100vh",
+        padding: "clamp(24px, 4vw, 44px) clamp(16px, 3vw, 28px) clamp(44px, 7vw, 72px)",
+        background:
+          "radial-gradient(circle at 15% 18%, rgba(32, 201, 151, 0.1), transparent 20%), radial-gradient(circle at 82% 42%, rgba(251, 146, 60, 0.1), transparent 18%), linear-gradient(135deg, #081226 0%, #020617 58%, #02030a 100%)",
+        color: "#e5e7eb",
+        fontFamily:
+          'Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+        lineHeight: 1.5,
+      }}
+    >
+      <div style={{ maxWidth: "1120px", margin: "0 auto" }}>
+        <div
+          className="mentor-entrance"
+          style={{ marginBottom: homeActive ? "12px" : "clamp(22px, 4vw, 32px)" }}
+        >
+          <div style={headerControlRowStyle}>
+            <div>
+              <div
+                className="command-kicker"
+                style={{
+                  fontSize: "0.9rem",
+                  letterSpacing: "0.22em",
+                  fontWeight: 700,
+                  color: "#cbd5e1",
+                }}
+              >
+                RELEVANCE AGENT
+              </div>
+              <div style={temporaryVersionBadgeStyle}>TEMP TEST: CODEX WORKSPACE VERSION</div>
             </div>
 
-            <CardHeader className="pb-2">
-              <HeaderHero
-                todayMission={state.todayMission}
-                headline={headline}
-                quote={quote}
-                soundOn={state.soundOn}
-                onToggleSound={() => setState((previous) => ({ ...previous, soundOn: !previous.soundOn }))}
-                onReset={resetAll}
-              />
-            </CardHeader>
+            {isOnboarded && !isEditingProfile && (
+              <button
+                className="mentor-soft-button command-sound-toggle"
+                onClick={handleToggleSound}
+                type="button"
+                aria-pressed={soundEnabled}
+                aria-label={soundEnabled ? "Turn command sounds off" : "Turn command sounds on"}
+              >
+                <span className={`status-light ${soundEnabled ? "" : "status-light-red"}`} />
+                <span>SND {soundEnabled ? "ON" : "OFF"}</span>
+              </button>
+            )}
+          </div>
 
-            <CardContent className="space-y-6">
-              <StatsGrid tokens={state.tokens} streak={state.streak} today={todayKey()} />
+          {!homeActive && (
+            <>
+              <h1
+                style={{
+                  fontSize: "clamp(2.3rem, 7vw, 4.2rem)",
+                  lineHeight: 0.95,
+                  margin: 0,
+                  fontWeight: 800,
+                  letterSpacing: "-0.05em",
+                  maxWidth: "850px",
+                  textWrap: "balance",
+                }}
+              >
+                Mission Control
+              </h1>
 
-              <div className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
-                <Card className="rounded-3xl border-slate-500/70 bg-slate-800/85 shadow-[0_10px_28px_rgba(0,0,0,0.28)]">
-                  <CardContent className="space-y-4 p-6">
-                    <div className="flex flex-wrap gap-3 rounded-2xl border border-slate-700 bg-slate-900/80 p-3 backdrop-blur">
-                      <Button onClick={addToken} className="rounded-2xl bg-emerald-500 text-slate-950 hover:bg-emerald-400">
-                        <Plus className="mr-2 h-4 w-4" /> Earn Token
-                      </Button>
-                      <Button
-                        onClick={removeToken}
-                        variant="outline"
-                        className="rounded-2xl border-slate-600 bg-slate-900 text-slate-100 hover:bg-slate-700"
-                      >
-                        <Minus className="mr-2 h-4 w-4" /> Remove Token
-                      </Button>
-                    </div>
+              <p
+                style={{
+                  marginTop: "18px",
+                  color: "#cbd5e1",
+                  fontSize: "1.15rem",
+                  maxWidth: "740px",
+                  lineHeight: 1.65,
+                }}
+              >
+                Regulate, choose the next useful move, and keep the rocket fueled.
+              </p>
+            </>
+          )}
+        </div>
 
-                    <div>
-                      <label className="mb-2 block text-sm font-medium text-slate-300">Today's mission</label>
-                      <Input
-                        value={state.todayMission}
-                        onChange={(event) => setState((previous) => ({ ...previous, todayMission: event.target.value }))}
-                        placeholder="Name your mission (e.g., Operation Focus Mode 🚀)"
-                        className="rounded-2xl border-slate-600 bg-slate-900 text-slate-100 placeholder:text-slate-500"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="mb-2 block text-sm font-medium text-slate-300">Quick log entry</label>
-                      <textarea
-                        value={logText}
-                        onChange={(event) => setLogText(event.target.value)}
-                        placeholder={"Mission: ...\nWin: ...\nNext: ..."}
-                        className="min-h-[180px] w-full rounded-2xl border border-slate-600 bg-slate-900 p-3 text-sm text-slate-100 outline-none placeholder:text-slate-500"
-                      />
-                    </div>
-
-                    <div>
-                      <div className="mb-2 flex items-center gap-2 text-sm font-medium text-slate-300">
-                        <Volume2 className="h-4 w-4" /> Regular token volume
-                      </div>
-                      <div className="rounded-2xl border border-slate-700 bg-slate-900/60 p-4">
-                        <Slider
-                          value={[state.regularVolume]}
-                          min={0}
-                          max={100}
-                          step={1}
-                          onValueChange={(value) =>
-                            setState((previous) => ({ ...previous, regularVolume: value[0] ?? previous.regularVolume }))
-                          }
-                        />
-                        <div className="mt-2 text-sm text-slate-200">{state.regularVolume}%</div>
-                      </div>
-                    </div>
-
-                    <div>
-                      <div className="mb-2 flex items-center gap-2 text-sm font-medium text-slate-300">
-                        <Volume2 className="h-4 w-4" /> Milestone volume
-                      </div>
-                      <div className="rounded-2xl border border-slate-700 bg-slate-900/60 p-4">
-                        <Slider
-                          value={[state.milestoneVolume]}
-                          min={0}
-                          max={100}
-                          step={1}
-                          onValueChange={(value) =>
-                            setState((previous) => ({
-                              ...previous,
-                              milestoneVolume: value[0] ?? previous.milestoneVolume,
-                            }))
-                          }
-                        />
-                        <div className="mt-2 text-sm text-slate-200">{state.milestoneVolume}%</div>
-                      </div>
-                    </div>
-
-                    <div className="mb-3 rounded-2xl border border-emerald-400/30 bg-emerald-500/10 p-3 text-sm text-emerald-200">
-                      "I complete my mission. I am a Relevance Agent."
-                    </div>
-
-                    <Card className="rounded-2xl border-slate-600/70 bg-slate-900/60 shadow-[0_8px_20px_rgba(0,0,0,0.18)]">
-                      <CardContent className="space-y-3 p-4">
-                        <div className="flex items-center justify-between gap-3">
-                          <div>
-                            <div className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-200">Milestone Progress</div>
-                            <div className="text-sm text-slate-300">
-                              {toNextMilestone} token{toNextMilestone === 1 ? "" : "s"} until your next celebration.
-                            </div>
-                          </div>
-                          <Badge className="rounded-xl bg-slate-700 text-slate-100 hover:bg-slate-700">Every {state.milestone}</Badge>
-                        </div>
-                        <Progress value={progressValue} className="h-3 rounded-full" />
-                      </CardContent>
-                    </Card>
-
-                    <motion.div
-                      key={message}
-                      initial={{ opacity: 0, y: 8 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className="rounded-2xl border border-slate-700 bg-slate-900/70 p-4 text-sm text-slate-200"
-                    >
-                      {message}
-                    </motion.div>
-                  </CardContent>
-                </Card>
-
-                <div className="space-y-6">
-                  <RecentLogs notes={state.notes} />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
+        {!isOnboarded || isEditingProfile ? (
+          <OnboardingFlow />
+        ) : (
+          <>
+            {!homeActive && navigation}
+            {activePage === "home" && <MentorHomePage onNavigate={setActivePage} />}
+            {activePage === "tasks" && <TasksPage />}
+            {activePage === "calendar" && <CalendarPage />}
+            {activePage === "support" && <RegulationPage />}
+            {activePage === "journey" && <JourneyPage />}
+            {activePage === "settings" && <SettingsPage />}
+            {homeActive && navigation}
+          </>
+        )}
       </div>
-    </div>
+      {isOnboarded && !isEditingProfile && <MilestoneOverlay />}
+    </main>
   );
 }
+
+const headerControlRowStyle = {
+  alignItems: "center",
+  display: "flex",
+  gap: "14px",
+  justifyContent: "space-between",
+  marginBottom: "14px",
+} satisfies CSSProperties;
+
+const temporaryVersionBadgeStyle = {
+  background: "rgba(251, 191, 36, 0.14)",
+  border: "1px solid rgba(251, 191, 36, 0.34)",
+  borderRadius: "999px",
+  color: "#fde68a",
+  display: "inline-block",
+  fontSize: "0.72rem",
+  fontWeight: 900,
+  letterSpacing: "0.12em",
+  marginTop: "8px",
+  padding: "5px 9px",
+  textTransform: "uppercase",
+} satisfies CSSProperties;
+
+export default App;

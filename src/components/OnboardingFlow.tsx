@@ -67,7 +67,6 @@ export function OnboardingFlow() {
   function goNext() {
     if (isAdvancing) return;
 
-    playUiFeedback("progress");
     setIsAdvancing(true);
 
     advanceTimerRef.current = window.setTimeout(() => {
@@ -82,7 +81,6 @@ export function OnboardingFlow() {
   }
 
   function goBack() {
-    playUiFeedback("light");
     setStep((current) => Math.max(current - 1, 0));
   }
 
@@ -188,23 +186,23 @@ export function OnboardingFlow() {
 
       <div style={buttonRowStyle}>
         <div style={leftButtonGroupStyle}>
-          <button className="mentor-soft-button" onClick={goBack} disabled={step === 0 || isAdvancing} style={secondaryButtonStyle}>
+          <button className="mentor-soft-button" onClick={goBack} onPointerDown={() => playUiFeedback("light")} disabled={step === 0 || isAdvancing} style={secondaryButtonStyle}>
             Back
           </button>
           {isEditingProfile && (
             <button
               className="mentor-soft-button"
               onClick={() => {
-                playUiFeedback("light");
                 cancelProfileEdit();
               }}
+              onPointerDown={() => playUiFeedback("light")}
               style={secondaryButtonStyle}
             >
               Cancel
             </button>
           )}
         </div>
-        <button className="mentor-primary-button" disabled={isAdvancing} onClick={goNext} style={primaryButtonStyle}>
+        <button className="mentor-primary-button" disabled={isAdvancing} onClick={goNext} onPointerDown={() => playUiFeedback("progress")} style={primaryButtonStyle}>
           {isAdvancing
             ? "Accepted"
             : step === TOTAL_STEPS - 1
@@ -241,9 +239,9 @@ function ChoiceStep<T extends string>({
               className={`mentor-soft-button command-tab ${active ? "command-choice-active" : ""}`}
               key={option.value}
               onClick={() => {
-                playUiFeedback("light");
                 onSelect(option.value);
               }}
+              onPointerDown={() => playUiFeedback("light")}
               style={{
                 ...choiceButtonStyle,
                 background: active ? "rgba(134, 239, 172, 0.16)" : "rgba(15, 23, 42, 0.78)",

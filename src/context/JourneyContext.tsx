@@ -28,6 +28,7 @@ type JourneyContextValue = {
   startProfileEdit: () => void;
   cancelProfileEdit: () => void;
   resetJourney: () => void;
+  resetMissionProgress: () => void;
   markActivity: () => void;
   markStuck: () => void;
   dismissMilestoneReward: () => void;
@@ -508,6 +509,25 @@ function findNewMajorMilestone(previous: GoalJourney, next: GoalJourney): { stag
   return null;
 }
 
+function resetJourneyProgressState(journey: GoalJourney): GoalJourney {
+  return normalizeJourney({
+    ...journey,
+    currentStageIndex: 0,
+    currentDestinationIndex: 0,
+    journeyPhase: "grounded",
+    majorActionAvailable: false,
+    majorActionType: null,
+    progress: 0,
+    stages: journey.stages.map((stage) => ({
+      ...stage,
+      milestones: stage.milestones.map((milestone) => ({
+        ...milestone,
+        completed: false,
+      })),
+    })),
+  }, "grounded");
+}
+
 export function JourneyProvider({ children }: { children: React.ReactNode }) {
   const [storedState] = useState<StoredJourneyState | null>(() => loadStoredJourneyState());
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(storedState?.currentUser ?? null);
@@ -554,6 +574,16 @@ export function JourneyProvider({ children }: { children: React.ReactNode }) {
     setActiveMilestoneReward(null);
     setMilestoneRewardHistory([]);
     setIsEditingProfile(false);
+  }
+
+  function resetMissionProgress() {
+    setCurrentJourney((previousJourney) => {
+      if (!previousJourney) return previousJourney;
+      return resetJourneyProgressState(previousJourney);
+    });
+    setMentorState("avoiding");
+    setActiveMilestoneReward(null);
+    setMilestoneRewardHistory([]);
   }
 
   function markActivity() {
@@ -649,6 +679,7 @@ export function JourneyProvider({ children }: { children: React.ReactNode }) {
       startProfileEdit,
       cancelProfileEdit,
       resetJourney,
+      resetMissionProgress,
       markActivity,
       markStuck,
       dismissMilestoneReward,
@@ -663,6 +694,7 @@ export function JourneyProvider({ children }: { children: React.ReactNode }) {
       missionAction,
       mentorState,
       milestoneRewardHistory,
+      resetMissionProgress,
     ]
   );
 

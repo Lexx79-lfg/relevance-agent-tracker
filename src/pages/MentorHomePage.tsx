@@ -1,16 +1,9 @@
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { useJourney } from "../context/JourneyContext";
-import { loadAppState, saveAppState } from "../lib/appState";
+import { completeMeaningfulMove, loadAppState, saveAppState } from "../lib/appState";
 import { playCommandSound } from "../lib/commandSound";
 import { generateMentorResponse, getModeQuote, MODE_META, MODE_PROMPTS } from "../lib/mentor";
-import type { AppState, LogEntry, MentorMode } from "../types/app";
-
-function formatTime(date: Date) {
-  return date.toLocaleTimeString([], {
-    hour: "numeric",
-    minute: "2-digit",
-  });
-}
+import type { AppState, MentorMode } from "../types/app";
 
 function getTimeAwareGreeting(name: string) {
   const hour = new Date().getHours();
@@ -118,7 +111,7 @@ export function MentorHomePage({ onNavigate }: { onNavigate: (page: MentorHomeRo
   const [guidanceOpen, setGuidanceOpen] = useState(false);
   const [selectedSupportLevel, setSelectedSupportLevel] = useState<SupportLevel | null>(null);
   const { completeMilestoneProgress, currentUser, markActivity } = useJourney();
-  const { mission, mode, userText, response, tokens, milestone, completedSteps, log } = appState;
+  const { mission, mode, userText, response, missionFuel, launchFuelRequired, completedSteps } = appState;
 
   useEffect(() => {
     saveAppState(appState);
@@ -135,7 +128,10 @@ export function MentorHomePage({ onNavigate }: { onNavigate: (page: MentorHomeRo
     return () => window.clearTimeout(timeoutId);
   }, [completionMessage, completionPulseKey]);
 
-  const progressPercent = useMemo(() => Math.min((tokens / milestone) * 100, 100), [tokens, milestone]);
+  const progressPercent = useMemo(
+    () => Math.min((missionFuel / launchFuelRequired) * 100, 100),
+    [launchFuelRequired, missionFuel]
+  );
   const recommendedStep = getIntentStep(selectedIntent, recoveryReason, response?.nextStep ?? null);
   const userName = currentUser?.name ?? "friend";
   const supportReflection = selectedIntent
@@ -143,7 +139,12 @@ export function MentorHomePage({ onNavigate }: { onNavigate: (page: MentorHomeRo
     : "Choose the closest fit. You do not have to explain everything before you begin.";
 
   function updateAppState(update: Partial<AppState>) {
-    setAppState((current) => ({ ...current, ...update }));
+    setAppState((current) => ({
+      ...current,
+      ...update,
+      currentMission:
+        typeof update.mission === "string" ? update.mission : update.currentMission ?? current.currentMission,
+    }));
   }
 
   function handleModeChange(nextMode: MentorMode) {
@@ -194,24 +195,19 @@ export function MentorHomePage({ onNavigate }: { onNavigate: (page: MentorHomeRo
     setCompletionPulseKey((current) => current + 1);
     setCompletionMessage("Progress confirmed. Choose what you need next.");
     setCompletionQuote(getRandomCompletionQuote());
+    const result = completeMeaningfulMove({
+      title: recommendedStep,
+      source: "guidance",
+    });
 
-    const entry: LogEntry = {
-      id: Date.now(),
-      time: formatTime(new Date()),
-      mode,
-      mission: mission.trim() || "Unnamed mission",
-      note: recommendedStep,
-    };
-    const nextTokens = tokens + 1;
+    if (!result.ok) return;
 
     completeMilestoneProgress();
-    updateAppState({
+    setAppState({
+      ...result.state,
       response: null,
-      tokens: nextTokens,
-      completedSteps: completedSteps + 1,
-      log: [entry, ...log].slice(0, 8),
       quote:
-        nextTokens >= milestone
+        result.state.missionFuel >= result.state.launchFuelRequired
           ? "Launch window reached. Let the win register before you move again."
           : "Signal received. One grounded step is enough to change the readout.",
     });
@@ -368,7 +364,7 @@ export function MentorHomePage({ onNavigate }: { onNavigate: (page: MentorHomeRo
               <div style={{ ...fuelFillStyle, width: `${progressPercent}%` }} />
             </div>
             <div style={statusMetaStyle}>
-              {tokens} / {milestone} steps · {completedSteps} completed
+              {missionFuel} / {launchFuelRequired} fuel · {completedSteps} completed
             </div>
           </div>
         </div>

@@ -1,400 +1,288 @@
 import { useEffect, useMemo, useState, type CSSProperties, type FormEvent } from "react";
 import { useJourney } from "../context/JourneyContext";
-import { emitTaskProgressFeedback } from "../interaction/taskProgressFeedback";
-import { useTaskInteractionFeedback } from "../interaction/useTaskInteractionFeedback";
-import { getProgressQuote } from "../quotes/progressQuotes";
-import { ProgressQuote } from "../quotes/ProgressQuote";
-import { TaskProgressPulse } from "../rewards/components/TaskProgressPulse";
-import { getRocketTaskProgressPulseTone } from "../themes/rocket/taskFeedbackAdapter";
-import { getRocketMissionStateForPhase } from "../themes/rocket/rocketMissionAdapter";
-import { LaunchPadPanel } from "../components/LaunchPadPanel";
-
-type TaskStatus = "open" | "complete";
-type TaskLevel = "low" | "medium" | "high";
-
-type Task = {
-  id: string;
-  title: string;
-  status: TaskStatus;
-  importance: TaskLevel;
-  urgency: TaskLevel;
-  consequenceLevel: TaskLevel;
-  effortLevel: TaskLevel;
-  notes: string;
-};
-
-const TASK_LEVELS: TaskLevel[] = ["low", "medium", "high"];
-
-const LEVEL_LABELS: Record<TaskLevel, string> = {
-  low: "Low",
-  medium: "Medium",
-  high: "High",
-};
-
-const LEVEL_SCORES: Record<TaskLevel, number> = {
-  low: 1,
-  medium: 2,
-  high: 3,
-};
-
-function createTaskId() {
-  return `task-${Date.now()}-${Math.random().toString(16).slice(2)}`;
-}
-
-function getTaskScore(task: Task) {
-  return (
-    LEVEL_SCORES[task.consequenceLevel] * 4 +
-    LEVEL_SCORES[task.urgency] * 3 +
-    LEVEL_SCORES[task.importance] * 2 -
-    LEVEL_SCORES[task.effortLevel]
-  );
-}
-
-function findRecommendedTask(tasks: Task[]) {
-  const openTasks = tasks.filter((task) => task.status === "open");
-
-  if (openTasks.length === 0) return null;
-
-  return [...openTasks].sort((first, second) => getTaskScore(second) - getTaskScore(first))[0];
-}
-
-function shouldEarnMissionProgress(task: Task) {
-  return task.consequenceLevel === "high" || task.importance === "high" || task.urgency === "high";
-}
+import {
+  addTask,
+  completeMeaningfulMove,
+  deleteTask,
+  loadAppState,
+  resetTestDataState,
+  updateTaskTitle,
+} from "../lib/appState";
+import type { AppTask } from "../types/app";
 
 export function TasksPage() {
-  const { completeMilestoneProgress, markActivity, currentJourney, currentUser } = useJourney();
-  const [tasks, setTasks] = useState<Task[]>([]);
+  const { completeMilestoneProgress, resetMissionProgress } = useJourney();
+  const [appState, setAppState] = useState(() => loadAppState());
   const [title, setTitle] = useState("");
-  const [importance, setImportance] = useState<TaskLevel>("medium");
-  const [urgency, setUrgency] = useState<TaskLevel>("medium");
-  const [consequenceLevel, setConsequenceLevel] = useState<TaskLevel>("medium");
-  const [effortLevel, setEffortLevel] = useState<TaskLevel>("medium");
-  const [notes, setNotes] = useState("");
-  const [missionMessage, setMissionMessage] = useState("Complete an important task to load mission fuel.");
-  const [progressQuote, setProgressQuote] = useState<string | null>(() => getProgressQuote("no_tasks_state", { force: true }));
-  const taskFeedback = useTaskInteractionFeedback();
-  const recommendedTask = useMemo(() => findRecommendedTask(tasks), [tasks]);
-  const canAddTask = title.trim().length >= 3;
+  const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
+  const [editingTitle, setEditingTitle] = useState("");
+  const [message, setMessage] = useState("");
+  const [showCompleted, setShowCompleted] = useState(false);
+  const tasks = appState.tasks;
+
+  const activeTasks = useMemo(
+    () => tasks.filter((task) => task.status === "active"),
+    [tasks]
+  );
+  const completedTasks = useMemo(
+    () => tasks.filter((task) => task.status === "completed"),
+    [tasks]
+  );
 
   useEffect(() => {
-    if (!progressQuote) return;
-
-    const timeoutId = window.setTimeout(() => setProgressQuote(null), 3000);
-
-    return () => window.clearTimeout(timeoutId);
-  }, [progressQuote]);
+    setAppState(loadAppState());
+  }, []);
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    const trimmedTitle = title.trim();
-    if (!canAddTask) {
-      setMissionMessage("Name one real task first. A clear signal starts with a clear action.");
+    const result = addTask(title);
+    if (!result.ok) {
+      setMessage("Add a task title first.");
       return;
     }
 
-    const nextTask: Task = {
-      id: createTaskId(),
-      title: trimmedTitle,
-      status: "open",
-      importance,
-      urgency,
-      consequenceLevel,
-      effortLevel,
-      notes: notes.trim(),
-    };
-
-    setTasks((current) => [nextTask, ...current]);
+    setAppState(result.state);
     setTitle("");
-    setNotes("");
-    setMissionMessage("Task captured. Choose one grounded next move.");
+    setMessage("Task added.");
   }
 
-  function completeTask(task: Task) {
-    if (task.status === "complete") return;
+  function handleCompleteTask(task: AppTask) {
+    const result = completeMeaningfulMove({
+      title: task.title,
+      source: "task",
+      taskId: task.id,
+    });
 
-    const earnsProgress = shouldEarnMissionProgress(task);
-    taskFeedback.triggerTaskFeedback(task.id, { rewarded: earnsProgress });
-    setTasks((current) =>
-      current.map((candidate) =>
-        candidate.id === task.id ? { ...candidate, status: "complete" } : candidate
-      )
-    );
-    markActivity();
-
-    if (earnsProgress) {
-      completeMilestoneProgress({ suppressReward: true });
-      setMissionMessage("Fuel added. Progress stored.");
-      setProgressQuote(getProgressQuote("important_task_complete", { force: true }));
-    } else {
-      setMissionMessage("Progress stored. Mission fuel waits for high-importance, urgent, or high-consequence work.");
-      setProgressQuote(getProgressQuote("task_complete", { rare: true }));
+    if (!result.ok) {
+      setMessage("This task needs a title before it can count.");
+      return;
     }
-    emitTaskProgressFeedback({ rewarded: earnsProgress });
+
+    completeMilestoneProgress({ suppressReward: true });
+    setAppState(result.state);
+    setMessage("+1 Mission Fuel");
+  }
+
+  function handleStartEdit(task: AppTask) {
+    setEditingTaskId(task.id);
+    setEditingTitle(task.title);
+  }
+
+  function handleSaveEdit(taskId: string) {
+    const trimmedTitle = editingTitle.trim();
+
+    if (!trimmedTitle) {
+      setMessage("Task title cannot be empty.");
+      return;
+    }
+
+    const result = updateTaskTitle(taskId, trimmedTitle);
+    if (!result.ok) {
+      setMessage("Task title cannot be empty.");
+      return;
+    }
+
+    setAppState(result.state);
+    setEditingTaskId(null);
+    setEditingTitle("");
+    setMessage("Task updated.");
+  }
+
+  function handleDeleteTask(taskId: string) {
+    setAppState(deleteTask(taskId));
+    if (editingTaskId === taskId) {
+      setEditingTaskId(null);
+      setEditingTitle("");
+    }
+    setMessage("Task deleted.");
+  }
+
+  function handleResetTestData() {
+    resetMissionProgress();
+    setAppState(resetTestDataState());
+    setTitle("");
+    setEditingTaskId(null);
+    setEditingTitle("");
+    setShowCompleted(false);
+    setMessage("Test data reset.");
   }
 
   return (
     <section className="mentor-panel command-panel command-screen" style={pageStyle}>
-      <div className="command-kicker" style={kickerStyle}>TASKS / PRIORITIES</div>
-      <h2 style={titleStyle}>Capture what matters, then choose what leads.</h2>
+      <div className="command-kicker" style={kickerStyle}>TASKS</div>
+      <h2 style={titleStyle}>Tasks</h2>
       <p style={copyStyle}>
-        Keep the list simple. Relevance Agent looks for real consequence, real urgency, and the smallest useful
-        task that can move the mission forward.
+        Complete meaningful moves to earn Mission Fuel.
       </p>
 
-      <div style={topGridStyle}>
-        <form className="command-card" onSubmit={handleSubmit} style={formStyle}>
-          <div style={labelStyle}>TASK CAPTURE</div>
-          <label style={fieldLabelStyle} htmlFor="task-title">Task name</label>
-          <input
-            id="task-title"
-            className="mentor-input"
-            value={title}
-            onChange={(event) => setTitle(event.target.value)}
-            placeholder="What needs attention?"
-            style={inputStyle}
-          />
-
-          <div style={selectGridStyle}>
-            <TaskSelect label="Importance" value={importance} onChange={setImportance} />
-            <TaskSelect label="Urgency" value={urgency} onChange={setUrgency} />
-            <TaskSelect label="Consequence" value={consequenceLevel} onChange={setConsequenceLevel} />
-            <TaskSelect label="Effort" value={effortLevel} onChange={setEffortLevel} />
+      <div style={debugCardStyle}>
+        <div>
+          <div style={debugLabelStyle}>Mission Fuel</div>
+          <div style={debugValueStyle}>
+            {appState.missionFuel} / {appState.launchFuelRequired}
           </div>
-
-          <label style={fieldLabelStyle} htmlFor="task-notes">Notes optional</label>
-          <textarea
-            id="task-notes"
-            className="mentor-input"
-            value={notes}
-            onChange={(event) => setNotes(event.target.value)}
-            placeholder="Any context that would make starting easier?"
-            rows={3}
-            style={textareaStyle}
-          />
-
-          <button
-            className="mentor-primary-button"
-            disabled={!canAddTask}
-            type="submit"
-            style={{ ...submitButtonStyle, ...(!canAddTask ? disabledButtonStyle : {}) }}
-          >
-            Add Task
-          </button>
-        </form>
-
-        <div className="command-card" style={recommendationStyle}>
-          <div style={labelStyle}>RECOMMENDED NEXT TASK</div>
-          {recommendedTask ? (
-            <>
-              <h3 style={recommendationTitleStyle}>{recommendedTask.title}</h3>
-              <p style={smallCopyStyle}>
-                This leads because it has the strongest mix of consequence, urgency, importance, and manageable effort.
-              </p>
-              <SignalRow task={recommendedTask} />
-              <button
-                className="mentor-soft-button"
-                onClick={() => completeTask(recommendedTask)}
-                style={{
-                  ...completeButtonStyle,
-                  ...getTaskButtonFeedbackStyle(taskFeedback.getTaskFeedbackState(recommendedTask.id)),
-                }}
-              >
-                Complete task
-              </button>
-            </>
-          ) : (
-            <p style={smallCopyStyle}>
-              Add one task to get a calm recommendation for the next useful move.
-            </p>
-          )}
-          <div style={missionNoteStyle}>
-            {missionMessage}
-            <TaskProgressPulse
-              active={taskFeedback.pulseVisible}
-              detail={taskFeedback.pulseRewarded ? "Mission fuel +1" : "Momentum"}
-              keyValue={taskFeedback.pulseKey}
-              tone={getRocketTaskProgressPulseTone(taskFeedback.pulseRewarded)}
-            />
-            <ProgressQuote quote={progressQuote} />
-          </div>
+        </div>
+        <div>
+          <div style={debugLabelStyle}>Completed Moves</div>
+          <div style={debugValueStyle}>{appState.completedActions}</div>
         </div>
       </div>
 
-      <LaunchPadPanel
-        progressValue={0} // Not used for fuel
-        tokens={0} // Not used
-        toNextMilestone={0} // Not used
-        milestone={0} // Not used
-        milestoneCount={0} // Not used
-        stage={currentJourney?.currentStageIndex ?? 0}
-        stageName={currentJourney?.stages[currentJourney.currentStageIndex]?.planetName ?? "Launch Pad"}
-        streak={0}
-        message={getTaskRocketMessage(currentJourney?.journeyPhase)}
-        feedbackMode="idle"
-        feedbackKey={0}
-        stageTransitionKey={0}
-        rocketMissionState={getRocketMissionStateForPhase(currentJourney?.journeyPhase ?? "grounded")}
-        journeyPhase={currentJourney?.journeyPhase}
-      />
+      <button
+        className="mentor-soft-button"
+        onClick={handleResetTestData}
+        style={resetButtonStyle}
+        type="button"
+      >
+        Reset test data
+      </button>
 
-      <div style={taskListStyle}>
-        <div style={labelStyle}>TASK LIST</div>
-        {tasks.length === 0 ? (
-          <p style={smallCopyStyle}>No tasks captured yet. Start with one thing that would reduce pressure.</p>
+      <form className="command-card" onSubmit={handleSubmit} style={formStyle}>
+        <div style={sectionLabelStyle}>Add a task</div>
+        <label style={fieldLabelStyle} htmlFor="task-title">Task title</label>
+        <div style={formRowStyle}>
+          <input
+            id="task-title"
+            className="mentor-input"
+            onChange={(event) => setTitle(event.target.value)}
+            placeholder="What do you need to do?"
+            style={inputStyle}
+            value={title}
+          />
+          <button className="mentor-primary-button" style={buttonStyle} type="submit">
+            Add task
+          </button>
+        </div>
+        {message ? <div style={messageStyle}>{message}</div> : null}
+      </form>
+
+      <section className="command-card" style={listCardStyle}>
+        <div style={sectionLabelStyle}>Active tasks</div>
+        {activeTasks.length === 0 ? (
+          <p style={emptyStyle}>No active tasks yet.</p>
         ) : (
-          <div style={tasksGridStyle}>
-            {tasks.map((task) => (
-              <article
-                className="command-card"
+          <div style={taskListStyle}>
+            {activeTasks.map((task) => (
+              <TaskRow
+                editing={editingTaskId === task.id}
+                editingTitle={editingTitle}
                 key={task.id}
-                style={{
-                  ...taskCardStyle,
-                  ...getTaskCardFeedbackStyle(taskFeedback.getTaskFeedbackState(task.id)),
-                  opacity: task.status === "complete" ? 0.68 : 1,
+                onChangeEditingTitle={setEditingTitle}
+                onComplete={() => handleCompleteTask(task)}
+                onDelete={() => handleDeleteTask(task.id)}
+                onEdit={() => handleStartEdit(task)}
+                onSave={() => handleSaveEdit(task.id)}
+                onCancel={() => {
+                  setEditingTaskId(null);
+                  setEditingTitle("");
                 }}
-              >
-                <TaskTransferPulse
-                  active={taskFeedback.getTaskFeedbackState(task.id).isCompleted}
-                  rewarded={shouldEarnMissionProgress(task)}
-                />
-                <div style={taskHeaderStyle}>
-                  <div>
-                    <h3 style={taskTitleStyle}>{task.title}</h3>
-                    {task.notes && <p style={taskNotesStyle}>{task.notes}</p>}
-                  </div>
-                  <span style={statusPillStyle}>{task.status === "complete" ? "Complete" : "Open"}</span>
-                </div>
-                <SignalRow task={task} />
-                {task.status === "open" && (
-                  <button
-                    className="mentor-soft-button"
-                    onClick={() => completeTask(task)}
-                    style={{
-                      ...smallCompleteButtonStyle,
-                      ...getTaskButtonFeedbackStyle(taskFeedback.getTaskFeedbackState(task.id)),
-                    }}
-                  >
-                    Complete task
-                  </button>
-                )}
-              </article>
+                task={task}
+              />
             ))}
           </div>
         )}
-      </div>
+      </section>
+
+      <details
+        className="command-card"
+        onToggle={(event) => setShowCompleted((event.currentTarget as HTMLDetailsElement).open)}
+        style={listCardStyle}
+      >
+        <summary style={completedSummaryStyle}>Completed tasks ({completedTasks.length})</summary>
+        {completedTasks.length === 0 ? (
+          <p style={emptyStyle}>Nothing completed yet.</p>
+        ) : (
+          <div style={{ ...taskListStyle, marginTop: showCompleted ? "12px" : 0 }}>
+            {completedTasks.map((task) => (
+              <TaskRow
+                editing={editingTaskId === task.id}
+                editingTitle={editingTitle}
+                key={task.id}
+                onChangeEditingTitle={setEditingTitle}
+                onDelete={() => handleDeleteTask(task.id)}
+                onEdit={() => handleStartEdit(task)}
+                onSave={() => handleSaveEdit(task.id)}
+                onCancel={() => {
+                  setEditingTaskId(null);
+                  setEditingTitle("");
+                }}
+                task={task}
+              />
+            ))}
+          </div>
+        )}
+      </details>
     </section>
   );
 }
 
-function getTaskRocketMessage(phase: string | undefined) {
-  if (phase === "actionReady") return "Launch command ready. Open Journey when you are ready to move.";
-  if (phase === "inProgress") return "In space. Important work keeps fuel moving through this leg.";
-  if (phase === "arrivalReady") return "Landing command ready. Open Journey when you are ready to secure this destination.";
-  if (phase === "arrived") return "Landed. This location is secured while the next route comes online.";
-
-  return "Mission system standing by. Important tasks can load the next signal.";
-}
-
-function TaskTransferPulse({ active, rewarded }: { active: boolean; rewarded: boolean }) {
-  if (!active) return null;
-
-  return (
-    <div
-      aria-hidden="true"
-      style={{
-        ...taskTransferPulseStyle,
-        background: rewarded
-          ? "linear-gradient(90deg, rgba(134, 239, 172, 0), rgba(134, 239, 172, 0.58), rgba(251, 191, 36, 0))"
-          : "linear-gradient(90deg, rgba(125, 211, 252, 0), rgba(125, 211, 252, 0.38), rgba(148, 163, 184, 0))",
-      }}
-    />
-  );
-}
-
-function getTaskCardFeedbackStyle(feedback: { isActivated: boolean; isCompleted: boolean }) {
-  if (feedback.isCompleted) {
-    return {
-      animation: "taskCompletionResolve 720ms ease-out",
-      border: "1px solid rgba(134, 239, 172, 0.3)",
-      boxShadow: "0 0 28px rgba(134, 239, 172, 0.12)",
-    } satisfies CSSProperties;
-  }
-
-  if (feedback.isActivated) {
-    return {
-      border: "1px solid rgba(251, 191, 36, 0.3)",
-      boxShadow: "0 0 20px rgba(251, 146, 60, 0.12)",
-      transform: "scale(0.992)",
-    } satisfies CSSProperties;
-  }
-
-  return {};
-}
-
-function getTaskButtonFeedbackStyle(feedback: { isActivated: boolean; isCompleted: boolean }) {
-  if (feedback.isCompleted) {
-    return {
-      background: "linear-gradient(180deg, rgba(134, 239, 172, 0.28), rgba(20, 83, 45, 0.2))",
-      border: "1px solid rgba(134, 239, 172, 0.34)",
-      transform: "scale(1)",
-    } satisfies CSSProperties;
-  }
-
-  if (feedback.isActivated) {
-    return {
-      transform: "scale(0.96)",
-    } satisfies CSSProperties;
-  }
-
-  return {};
-}
-
-function TaskSelect({
-  label,
-  onChange,
-  value,
+function TaskRow({
+  task,
+  editing,
+  editingTitle,
+  onChangeEditingTitle,
+  onComplete,
+  onEdit,
+  onSave,
+  onCancel,
+  onDelete,
 }: {
-  label: string;
-  onChange: (value: TaskLevel) => void;
-  value: TaskLevel;
+  task: AppTask;
+  editing: boolean;
+  editingTitle: string;
+  onChangeEditingTitle: (value: string) => void;
+  onComplete?: () => void;
+  onEdit: () => void;
+  onSave: () => void;
+  onCancel: () => void;
+  onDelete: () => void;
 }) {
   return (
-    <label style={fieldLabelStyle}>
-      {label}
-      <select
-        className="mentor-input"
-        value={value}
-        onChange={(event) => onChange(event.target.value as TaskLevel)}
-        style={selectStyle}
-      >
-        {TASK_LEVELS.map((level) => (
-          <option key={level} value={level}>
-            {LEVEL_LABELS[level]}
-          </option>
-        ))}
-      </select>
-    </label>
-  );
-}
+    <article style={{ ...taskRowStyle, ...(task.status === "completed" ? completedTaskRowStyle : {}) }}>
+      <div style={taskHeaderStyle}>
+        <div style={statusWrapStyle}>
+          <span style={{ ...statusDotStyle, ...(task.status === "completed" ? completedDotStyle : activeDotStyle) }} />
+          <span style={statusTextStyle}>{task.status === "completed" ? "Completed" : "Active"}</span>
+        </div>
+      </div>
 
-function SignalRow({ task }: { task: Task }) {
-  return (
-    <div style={signalRowStyle}>
-      <Signal label="Consequence" value={task.consequenceLevel} />
-      <Signal label="Urgency" value={task.urgency} />
-      <Signal label="Importance" value={task.importance} />
-      <Signal label="Effort" value={task.effortLevel} />
-    </div>
-  );
-}
-
-function Signal({ label, value }: { label: string; value: TaskLevel }) {
-  return (
-    <span style={signalPillStyle}>
-      {label}: {LEVEL_LABELS[value]}
-    </span>
+      {editing ? (
+        <div style={editRowStyle}>
+          <input
+            className="mentor-input"
+            onChange={(event) => onChangeEditingTitle(event.target.value)}
+            style={inputStyle}
+            value={editingTitle}
+          />
+          <div style={actionRowStyle}>
+            <button className="mentor-soft-button" onClick={onSave} style={smallButtonStyle} type="button">
+              Save
+            </button>
+            <button className="mentor-soft-button" onClick={onCancel} style={smallButtonStyle} type="button">
+              Cancel
+            </button>
+          </div>
+        </div>
+      ) : (
+        <>
+          <h3 style={taskTitleStyle}>{task.title}</h3>
+          <div style={actionRowStyle}>
+            {onComplete ? (
+              <button className="mentor-primary-button" onClick={onComplete} style={smallButtonStyle} type="button">
+                Complete
+              </button>
+            ) : null}
+            <button className="mentor-soft-button" onClick={onEdit} style={smallButtonStyle} type="button">
+              Edit
+            </button>
+            <button className="mentor-soft-button" onClick={onDelete} style={smallButtonStyle} type="button">
+              Delete
+            </button>
+          </div>
+        </>
+      )}
+    </article>
   );
 }
 
@@ -402,8 +290,10 @@ const pageStyle = {
   background: "rgba(9, 20, 44, 0.84)",
   border: "1px solid rgba(148, 163, 184, 0.18)",
   borderRadius: "28px",
-  padding: "clamp(20px, 4vw, 30px)",
   boxShadow: "0 22px 70px rgba(0,0,0,0.26)",
+  display: "grid",
+  gap: "16px",
+  padding: "clamp(18px, 4vw, 28px)",
 } satisfies CSSProperties;
 
 const kickerStyle = {
@@ -411,55 +301,57 @@ const kickerStyle = {
   fontSize: "0.84rem",
   fontWeight: 800,
   letterSpacing: "0.2em",
-  marginBottom: "12px",
 } satisfies CSSProperties;
 
 const titleStyle = {
   color: "#f8fafc",
-  fontSize: "clamp(1.6rem, 4vw, 2.25rem)",
-  lineHeight: 1.1,
-  margin: "0 0 12px",
+  fontSize: "clamp(1.7rem, 4vw, 2.4rem)",
+  lineHeight: 1.08,
+  margin: 0,
 } satisfies CSSProperties;
 
 const copyStyle = {
   color: "#cbd5e1",
-  fontSize: "1.05rem",
-  lineHeight: 1.65,
-  margin: "0 0 22px",
-  maxWidth: "780px",
+  fontSize: "1rem",
+  lineHeight: 1.55,
+  margin: 0,
 } satisfies CSSProperties;
 
-const topGridStyle = {
+const debugCardStyle = {
+  background: "rgba(15, 23, 42, 0.74)",
+  border: "1px solid rgba(148, 163, 184, 0.14)",
+  borderRadius: "18px",
   display: "grid",
-  gap: "16px",
-  gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 320px), 1fr))",
+  gap: "8px",
+  gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+  padding: "14px",
+} satisfies CSSProperties;
+
+const debugLabelStyle = {
+  color: "#94a3b8",
+  fontSize: "0.76rem",
+  fontWeight: 800,
+  letterSpacing: "0.12em",
+  textTransform: "uppercase",
+} satisfies CSSProperties;
+
+const debugValueStyle = {
+  color: "#f8fafc",
+  fontSize: "1.2rem",
+  fontWeight: 900,
+  marginTop: "4px",
+} satisfies CSSProperties;
+
+const resetButtonStyle = {
+  justifySelf: "start",
+  minHeight: "40px",
+  padding: "9px 12px",
 } satisfies CSSProperties;
 
 const formStyle = {
-  background: "#061120",
-  border: "1px solid rgba(148, 163, 184, 0.1)",
-  borderRadius: "20px",
   display: "grid",
-  gap: "12px",
-  padding: "18px",
-} satisfies CSSProperties;
-
-const recommendationStyle = {
-  background:
-    "radial-gradient(circle at 85% 18%, rgba(251, 146, 60, 0.16), transparent 24%), #061120",
-  border: "1px solid rgba(134, 239, 172, 0.16)",
-  borderRadius: "20px",
-  display: "grid",
-  gap: "12px",
-  padding: "18px",
-} satisfies CSSProperties;
-
-const labelStyle = {
-  color: "#fbbf24",
-  fontSize: "0.8rem",
-  fontWeight: 800,
-  letterSpacing: "0.18em",
-  marginBottom: "2px",
+  gap: "10px",
+  padding: "16px",
 } satisfies CSSProperties;
 
 const fieldLabelStyle = {
@@ -470,148 +362,126 @@ const fieldLabelStyle = {
   gap: "6px",
 } satisfies CSSProperties;
 
+const formRowStyle = {
+  display: "grid",
+  gap: "8px",
+  gridTemplateColumns: "1fr",
+} satisfies CSSProperties;
+
 const inputStyle = {
   width: "100%",
 } satisfies CSSProperties;
 
-const textareaStyle = {
-  resize: "vertical",
-  width: "100%",
+const buttonStyle = {
+  minHeight: "44px",
+  padding: "10px 14px",
 } satisfies CSSProperties;
 
-const selectGridStyle = {
-  display: "grid",
-  gap: "10px",
-  gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 130px), 1fr))",
-} satisfies CSSProperties;
-
-const selectStyle = {
-  width: "100%",
-} satisfies CSSProperties;
-
-const submitButtonStyle = {
-  justifySelf: "start",
-} satisfies CSSProperties;
-
-const disabledButtonStyle = {
-  cursor: "not-allowed",
-  filter: "saturate(0.76)",
-  opacity: 0.58,
-} satisfies CSSProperties;
-
-const recommendationTitleStyle = {
-  color: "#f8fafc",
-  fontSize: "1.35rem",
-  lineHeight: 1.18,
-  margin: 0,
-} satisfies CSSProperties;
-
-const smallCopyStyle = {
-  color: "#cbd5e1",
-  fontSize: "0.98rem",
-  lineHeight: 1.55,
-  margin: 0,
-} satisfies CSSProperties;
-
-const missionNoteStyle = {
-  background: "rgba(134, 239, 172, 0.08)",
-  border: "1px solid rgba(134, 239, 172, 0.16)",
-  borderRadius: "14px",
+const messageStyle = {
   color: "#d9f99d",
   fontSize: "0.92rem",
   lineHeight: 1.45,
-  padding: "10px 12px",
 } satisfies CSSProperties;
 
-const completeButtonStyle = {
-  justifySelf: "start",
+const listCardStyle = {
+  display: "grid",
+  gap: "12px",
+  padding: "16px",
+} satisfies CSSProperties;
+
+const sectionLabelStyle = {
+  color: "#fbbf24",
+  fontSize: "0.8rem",
+  fontWeight: 800,
+  letterSpacing: "0.18em",
+  textTransform: "uppercase",
+} satisfies CSSProperties;
+
+const emptyStyle = {
+  color: "#94a3b8",
+  fontSize: "0.95rem",
+  lineHeight: 1.5,
+  margin: 0,
 } satisfies CSSProperties;
 
 const taskListStyle = {
-  background: "rgba(2, 6, 23, 0.32)",
-  border: "1px solid rgba(148, 163, 184, 0.1)",
-  borderRadius: "20px",
-  marginTop: "16px",
-  padding: "18px",
-} satisfies CSSProperties;
-
-const tasksGridStyle = {
   display: "grid",
-  gap: "12px",
+  gap: "10px",
 } satisfies CSSProperties;
 
-const taskCardStyle = {
+const completedSummaryStyle = {
+  color: "#fbbf24",
+  cursor: "pointer",
+  fontSize: "0.98rem",
+  fontWeight: 800,
+  listStyle: "none",
+} satisfies CSSProperties;
+
+const taskRowStyle = {
   background: "rgba(2, 6, 23, 0.56)",
   border: "1px solid rgba(148, 163, 184, 0.1)",
   borderRadius: "16px",
   display: "grid",
-  gap: "12px",
+  gap: "10px",
   padding: "14px",
-  position: "relative",
 } satisfies CSSProperties;
 
-const taskTransferPulseStyle = {
-  animation: "taskTransferPulse 280ms ease-out both",
-  borderRadius: "999px",
-  height: "3px",
-  left: "12px",
-  pointerEvents: "none",
-  position: "absolute",
-  right: "12px",
-  top: "12px",
-  transformOrigin: "0% 50%",
+const completedTaskRowStyle = {
+  opacity: 0.76,
 } satisfies CSSProperties;
 
 const taskHeaderStyle = {
-  alignItems: "flex-start",
+  alignItems: "center",
   display: "flex",
-  gap: "12px",
   justifyContent: "space-between",
+} satisfies CSSProperties;
+
+const statusWrapStyle = {
+  alignItems: "center",
+  display: "flex",
+  gap: "8px",
+} satisfies CSSProperties;
+
+const statusDotStyle = {
+  borderRadius: "999px",
+  height: "10px",
+  width: "10px",
+} satisfies CSSProperties;
+
+const activeDotStyle = {
+  background: "#fbbf24",
+} satisfies CSSProperties;
+
+const completedDotStyle = {
+  background: "#86efac",
+} satisfies CSSProperties;
+
+const statusTextStyle = {
+  color: "#cbd5e1",
+  fontSize: "0.8rem",
+  fontWeight: 800,
+  textTransform: "uppercase",
 } satisfies CSSProperties;
 
 const taskTitleStyle = {
   color: "#f8fafc",
-  fontSize: "1.05rem",
-  lineHeight: 1.25,
+  fontSize: "1rem",
+  lineHeight: 1.35,
   margin: 0,
 } satisfies CSSProperties;
 
-const taskNotesStyle = {
-  color: "#94a3b8",
-  fontSize: "0.92rem",
-  lineHeight: 1.45,
-  margin: "6px 0 0",
-} satisfies CSSProperties;
-
-const statusPillStyle = {
-  background: "rgba(148, 163, 184, 0.1)",
-  border: "1px solid rgba(148, 163, 184, 0.14)",
-  borderRadius: "999px",
-  color: "#cbd5e1",
-  flex: "0 0 auto",
-  fontSize: "0.76rem",
-  fontWeight: 900,
-  padding: "5px 8px",
-  textTransform: "uppercase",
-} satisfies CSSProperties;
-
-const signalRowStyle = {
+const actionRowStyle = {
   display: "flex",
   flexWrap: "wrap",
   gap: "8px",
 } satisfies CSSProperties;
 
-const signalPillStyle = {
-  background: "rgba(15, 23, 42, 0.82)",
-  border: "1px solid rgba(148, 163, 184, 0.12)",
-  borderRadius: "999px",
-  color: "#cbd5e1",
-  fontSize: "0.8rem",
-  fontWeight: 750,
-  padding: "6px 8px",
+const editRowStyle = {
+  display: "grid",
+  gap: "8px",
 } satisfies CSSProperties;
 
-const smallCompleteButtonStyle = {
-  justifySelf: "start",
+const smallButtonStyle = {
+  minHeight: "40px",
   padding: "9px 12px",
 } satisfies CSSProperties;

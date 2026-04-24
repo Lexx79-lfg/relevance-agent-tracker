@@ -30,15 +30,28 @@ export type MentorProfile = {
   milestoneEffect: "rocket-progress";
 };
 
+export type AppTask = {
+  id: string;
+  title: string;
+  status: "active" | "completed";
+  updatedAt: string;
+};
+
 export type AppState = {
   mission: string;
+  currentMission: string;
   mode: MentorMode;
   userText: string;
   response: MentorResponse | null;
   quote: string;
+  missionFuel: number;
+  launchFuelRequired: number;
+  journeyProgress: number;
+  tasks: AppTask[];
   tokens: number;
   milestone: number;
   completedSteps: number;
+  completedActions: number;
   log: LogEntry[];
   dailyCheckIn: DailyCheckIn;
   mentorProfile: MentorProfile;

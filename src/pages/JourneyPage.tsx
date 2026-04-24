@@ -1,19 +1,17 @@
-import { type CSSProperties } from "react";
+import { useState, type CSSProperties } from "react";
 import { JourneyView } from "../components/JourneyView";
 import { useJourney } from "../context/JourneyContext";
+import { getMissionFuelCount, loadAppState, recordMissionLaunch } from "../lib/appState";
 import { isCommandSoundEnabled } from "../lib/commandSound";
 import { playMajorCommandFeedback } from "../lib/uiFeedback";
 import { RewardSystemProvider } from "../rewards/RewardSystemProvider";
 import { MilestoneCelebrationOverlay } from "../rewards/components/MilestoneCelebrationOverlay";
 import { RewardSceneHost } from "../rewards/components/RewardSceneHost";
-import { RewardTracker } from "../rewards/components/RewardTracker";
 import type { GoalJourney, JourneyPhase, JourneyStage, MissionAction, Milestone, MilestoneRewardHistoryEntry } from "../types/journey";
 
 export function JourneyPage() {
   const {
-    completeMilestoneProgress,
     currentJourney,
-    markActivity,
     milestoneRewardHistory,
     missionAction,
     triggerMissionAction,
@@ -24,18 +22,20 @@ export function JourneyPage() {
   const currentDestinationStage = getJourneyStage(currentJourney, currentJourney?.currentDestinationIndex);
   const journeyPhase = currentJourney?.journeyPhase ?? "grounded";
   const destination = currentJourney?.destinationName ?? "Mars";
-  const cycleProgress = getMajorCycleProgress(currentJourney, nextMajor);
-
-  function handleAddFuel() {
-    if (!currentJourney) return;
-
-    markActivity();
-    completeMilestoneProgress();
-  }
+  const [appState, setAppState] = useState(() => loadAppState());
+  const missionFuel = getMissionFuelCount(appState);
+  const launchFuelRequired = 7;
+  const cycleProgress = {
+    currentValue: Math.min(missionFuel, launchFuelRequired),
+    targetValue: launchFuelRequired,
+  };
 
   function handleMissionAction(action: MissionAction) {
     playMajorCommandFeedback(action);
     triggerMissionAction();
+    if (action === "launch") {
+      setAppState(recordMissionLaunch());
+    }
   }
 
   return (
@@ -48,19 +48,14 @@ export function JourneyPage() {
         journeyPhase={journeyPhase}
         nextMajor={nextMajor}
         missionAction={missionAction}
+        missionFuel={missionFuel}
+        completedActions={appState.completedActions}
+        currentMission={appState.currentMission}
+        launchFuelRequired={launchFuelRequired}
+        journeyProgress={appState.journeyProgress}
         cycleProgress={cycleProgress}
-        onAddFuel={handleAddFuel}
         onMissionAction={handleMissionAction}
       />
-      <section style={lowerGridStyle}>
-        <div style={missionPanelStyle}>
-          <NextMajorMilestone journey={currentJourney} target={nextMajor} />
-          <CurrentStageMilestones journey={currentJourney} stage={currentStage} />
-          <JourneyHistory entries={milestoneRewardHistory} />
-        </div>
-
-        <JourneyView />
-      </section>
     </section>
   );
 }
@@ -85,7 +80,11 @@ function MissionControlHero({
   journeyPhase,
   nextMajor,
   missionAction,
-  onAddFuel,
+  missionFuel,
+  completedActions,
+  currentMission,
+  launchFuelRequired,
+  journeyProgress,
   onMissionAction,
   cycleProgress,
 }: {
@@ -96,7 +95,11 @@ function MissionControlHero({
   journeyPhase: JourneyPhase;
   nextMajor: NextMajorMilestoneTarget | null;
   missionAction: MissionAction | null;
-  onAddFuel: () => void;
+  missionFuel: number;
+  completedActions: number;
+  currentMission: string;
+  launchFuelRequired: number;
+  journeyProgress: number;
   onMissionAction: (action: MissionAction) => void;
   cycleProgress: RewardCycleProgress;
 }) {
@@ -107,78 +110,59 @@ function MissionControlHero({
   const locationLabel = getLocationLabel(journeyPhase);
   const locationValue = getLocationValue(journeyPhase, currentDestinationStage, currentStage);
   const targetValue = getTargetValue(journeyPhase, currentDestinationStage, currentStage, destination);
+  const activeMissionContext = Boolean(currentMission.trim() || currentJourney?.title?.trim() || currentStage?.planetName?.trim() || destination.trim());
+  const launchReady = missionFuel >= launchFuelRequired && completedActions > 0 && activeMissionContext;
+  const missionFuelPercent = Math.min((missionFuel / launchFuelRequired) * 100, 100);
+  const canUseMissionAction = Boolean(missionAction && launchReady);
 
   return (
     <div className="mentor-panel command-panel command-screen" style={heroStyle}>
-      <RewardSystemProvider
-        currentValue={cycleProgress.currentValue}
-        deferMilestoneSequence
-        destinationName={destination}
-        journeyPhase={journeyPhase}
-        onProgressCommit={onAddFuel}
-        soundEnabled={isCommandSoundEnabled()}
-        stageName={currentStage?.planetName}
-        targetName={nextMajor?.milestone.name}
-        targetValue={cycleProgress.targetValue}
-        themeId="rocket"
-      >
-        <div style={heroCopyStyle}>
-          <div className="command-kicker" style={kickerStyle}>MISSION CONTROL</div>
-          <h2 style={heroTitleStyle}>Journey to {destination}</h2>
-          <p style={heroTextStyle}>
-            {currentStage
-              ? `${missionStateCopy.heroLine} Destination lock remains ${destination}.`
-              : "Complete onboarding to chart the route and bring the mission online."}
-          </p>
-
-          <div style={statusGridStyle}>
-            <StatusTile label={locationLabel} value={locationValue} />
-            <StatusTile label="Mission phase" value={missionStateCopy.status} />
-            <StatusTile label="Route target" value={targetValue} />
-            <StatusTile
-              label="Next milestone"
-              value={nextMajor ? nextMajor.milestone.name : currentJourney ? "Route complete" : "Awaiting route"}
-            />
-            <StatusTile
-              label="Steps needed"
-              value={nextMajor ? `${remainingSteps} step${remainingSteps === 1 ? "" : "s"}` : "Awaiting next action"}
-            />
+      <div style={heroCopyStyle}>
+        <div className="command-kicker" style={kickerStyle}>MISSION CONTROL</div>
+        <h2 style={heroTitleStyle}>Journey to {destination}</h2>
+        <div style={fuelCardStyle}>
+          <div style={fuelHeaderStyle}>
+            <span>Mission Fuel</span>
+            <strong>{missionFuel} / {launchFuelRequired} fuel</strong>
           </div>
-
-          {currentJourney ? (
-            <>
-              <RewardTracker />
-              {missionAction && (
-                <div style={missionActionWrapStyle}>
-                  <div style={missionActionLabelStyle}>
-                    {missionAction === "land" ? "Landing command available" : "Launch command available"}
-                  </div>
-                  <button
-                    className="mentor-primary-button mission-action-button"
-                    onClick={() => onMissionAction(missionAction)}
-                    style={missionActionButtonStyle}
-                    type="button"
-                  >
-                    {getMissionActionLabel(missionAction)}
-                  </button>
-                </div>
-              )}
-            </>
-          ) : (
-            <div style={taskFuelLinkStyle}>Progress will come online when a route is active.</div>
-          )}
-
-          <div style={taskFuelLinkStyle}>
-            {missionStateCopy.fuelLine}
+          <div aria-label="Mission Fuel" style={fuelTrackStyle}>
+            <div style={{ ...fuelFillStyle, width: `${missionFuelPercent}%` }} />
+          </div>
+          <div style={fuelMetaStyle}>
+            {launchReady
+              ? "Launch ready."
+              : "Complete meaningful moves to fuel launch."}
           </div>
         </div>
-
-        <div style={{ ...sceneWrapStyle, ...getJourneySceneWrapStyle(journeyPhase) }}>
-          <div style={journeySceneLabelStyle}>{getJourneyScenePostureLabel(journeyPhase)}</div>
-          <RewardSceneHost />
-          <MilestoneCelebrationOverlay />
-        </div>
-      </RewardSystemProvider>
+        {missionAction ? (
+          <div style={missionActionWrapStyle}>
+            <div style={missionActionLabelStyle}>
+              {canUseMissionAction
+                ? missionAction === "land"
+                  ? "Landing command available"
+                  : "Launch command available"
+                : "Launch locked"}
+            </div>
+            {!canUseMissionAction && (
+              <div style={missionActionHelpStyle}>Complete meaningful moves to fuel launch.</div>
+            )}
+            <button
+              className="mentor-primary-button mission-action-button"
+              disabled={!canUseMissionAction}
+              onClick={() => onMissionAction(missionAction)}
+              style={{
+                ...missionActionButtonStyle,
+                ...(!canUseMissionAction ? missionActionDisabledStyle : {}),
+              }}
+              type="button"
+            >
+              {canUseMissionAction ? getMissionActionLabel(missionAction) : "Fuel launch first"}
+            </button>
+          </div>
+        ) : (
+          <div style={taskFuelLinkStyle}>Complete meaningful moves to fuel launch.</div>
+        )}
+      </div>
     </div>
   );
 }
@@ -648,6 +632,49 @@ const statusValueStyle = {
   marginTop: "5px",
 } satisfies CSSProperties;
 
+const fuelCardStyle = {
+  background: "rgba(2, 6, 23, 0.4)",
+  border: "1px solid rgba(134, 239, 172, 0.18)",
+  borderRadius: "16px",
+  display: "grid",
+  gap: "10px",
+  padding: "12px",
+} satisfies CSSProperties;
+
+const fuelHeaderStyle = {
+  alignItems: "center",
+  color: "#bbf7d0",
+  display: "flex",
+  fontSize: "0.78rem",
+  fontWeight: 950,
+  justifyContent: "space-between",
+  letterSpacing: "0.14em",
+  textTransform: "uppercase",
+} satisfies CSSProperties;
+
+const fuelTrackStyle = {
+  background: "#020817",
+  border: "1px solid rgba(134, 239, 172, 0.32)",
+  borderRadius: "999px",
+  height: "22px",
+  overflow: "hidden",
+  padding: "3px",
+} satisfies CSSProperties;
+
+const fuelFillStyle = {
+  background: "linear-gradient(90deg, #14532d 0%, #22c55e 34%, #86efac 76%, #fbbf24 100%)",
+  borderRadius: "999px",
+  boxShadow: "0 0 26px rgba(134, 239, 172, 0.42)",
+  height: "100%",
+  transition: "width 420ms cubic-bezier(0.22, 1, 0.36, 1)",
+} satisfies CSSProperties;
+
+const fuelMetaStyle = {
+  color: "#cbd5e1",
+  fontSize: "0.88rem",
+  lineHeight: 1.45,
+} satisfies CSSProperties;
+
 const taskFuelLinkStyle = {
   background: "linear-gradient(90deg, rgba(134, 239, 172, 0.1), rgba(125, 211, 252, 0.05))",
   border: "1px solid rgba(134, 239, 172, 0.16)",
@@ -703,6 +730,19 @@ const missionActionLabelStyle = {
   letterSpacing: "0.14em",
   padding: "0 4px",
   textTransform: "uppercase",
+} satisfies CSSProperties;
+
+const missionActionHelpStyle = {
+  color: "#cbd5e1",
+  fontSize: "0.84rem",
+  lineHeight: 1.45,
+  padding: "0 4px",
+} satisfies CSSProperties;
+
+const missionActionDisabledStyle = {
+  cursor: "not-allowed",
+  filter: "saturate(0.76)",
+  opacity: 0.62,
 } satisfies CSSProperties;
 
 const lowerGridStyle = {

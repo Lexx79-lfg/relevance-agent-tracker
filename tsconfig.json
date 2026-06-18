@@ -17,5 +17,13 @@
     "jsx": "react-jsx"
   },
   "include": ["src"],
+  "exclude": [
+    "src/interaction/feedbackTypes 2.ts",
+    "src/interaction/taskProgressFeedback 2.ts",
+    "src/interaction/useTaskInteractionFeedback 2.ts",
+    "src/lib/mentor 2.ts",
+    "src/lib/uiFeedback 2.ts",
+    "src/rewards/rewardReducer 2.ts"
+  ],
   "references": [{ "path": "./tsconfig.node.json" }]
 }
